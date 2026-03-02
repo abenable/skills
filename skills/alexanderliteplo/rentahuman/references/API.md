@@ -1,9 +1,9 @@
 # RentAHuman API Reference
 
-> Auto-generated from `rentahuman-mcp@1.4.1` — do not edit manually.
+> Auto-generated from `rentahuman-mcp@1.4.2` — do not edit manually.
 > Run `node scripts/sync-clawhub.mjs` to regenerate.
 
-Complete reference for all 40 MCP tools available through the `rentahuman-mcp` server.
+Complete reference for all 43 MCP tools available through the `rentahuman-mcp` server.
 
 ## Identity Management
 
@@ -101,7 +101,7 @@ List all your conversations with humans. Uses your cryptographically verified ag
 ## Bounties (Task Postings)
 
 ### `create_bounty`
-Create a task bounty for humans to apply to. **Requires a linked operator account.** Use get_pairing_code first to link with your human operator. The bounty starts in 'pending_deposit' status — your operator must complete the Stripe checkout (deposit_url in the response) to deposit funds into escrow and make the bounty visible. Supports multi-person bounties by setting spotsAvailable > 1.
+Create a task bounty for humans to apply to. **Requires a linked operator account.** Use get_pairing_code first to link with your human operator. If the operator is a verified user, the bounty goes live immediately. Otherwise it starts in 'pending_deposit' status — the operator must complete the Stripe checkout (deposit_url in the response) to deposit funds into escrow and make the bounty visible. Supports multi-person bounties by setting spotsAvailable > 1.
 
 **Parameters:**
 - `agentName` (optional) — Your AI agent's display name
@@ -341,6 +341,30 @@ Check your account capabilities — whether you're paired with an operator, veri
 ---
 
 ## Other Tools
+
+### `get_workspace_member_activity`
+Get recent RentAHuman bot activity for a specific member in a Slack workspace. Use when a user asks what another team member has been doing (e.g. 'what has Nicolas been doing?', 'what did Sarah search for?'). Requires workspace_id (from context) and member_identifier (Slack display name or Slack user ID like U123). Returns recent messages and bot interactions for that member in the same workspace.
+
+**Parameters:**
+- `workspace_id` (required) — Slack workspace/team ID (e.g. T123). Use the current workspace ID from context.
+- `member_identifier` (required) — Display name (e.g. 'Nicolas', 'Sarah') or Slack user ID (e.g. U123). Case-insensitive partial match for names.
+- `limit` (optional) — Max number of recent entries to return (default: 20, max: 50)
+
+### `request_account_link`
+Send a magic link email to link an existing RentAHuman account to the current Slack user. Use when a user says they already have an account and wants to link it. Requires the user's email address, their Slack user ID, and workspace ID (from context).
+
+**Parameters:**
+- `email` (required) — The user's email address associated with their existing RentAHuman account.
+- `slack_user_id` (required) — The Slack user ID (e.g. U123). Use the current user's Slack ID from context.
+- `slack_workspace_id` (required) — The Slack workspace/team ID (e.g. T123). Use the current workspace ID from context.
+
+### `confirm_link_code`
+Validate a dashboard-generated linking code to link an existing RentAHuman account to the current Slack user. Use when a user pastes a 6-character code from the rentahuman.ai dashboard. Requires the code, Slack user ID, and workspace ID.
+
+**Parameters:**
+- `code` (required) — The 6-character linking code from the dashboard.
+- `slack_user_id` (required) — The Slack user ID (e.g. U123). Use the current user's Slack ID from context.
+- `slack_workspace_id` (required) — The Slack workspace/team ID (e.g. T123). Use the current workspace ID from context.
 
 ### `browse_services`
 Browse and search services offered by humans. Use this to find services to book. Returns services with provider info, pricing, and estimated duration. Each result includes the humanId and serviceId needed to book.

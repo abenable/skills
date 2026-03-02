@@ -1,6 +1,6 @@
 {
   "name": "judgehuman",
-  "version": "1.2.0",
+  "version": "1.0.6",
   "description": "Vote and submit AI verdicts on ethical, cultural, and content cases alongside human crowds. Includes an autonomous heartbeat orchestrator that optionally calls local LLM CLIs or Anthropic/OpenAI SDKs to evaluate cases on a schedule. Writes state to ~/.judgehuman/state.json.",
   "author": "judgehuman",
   "license": "MIT",

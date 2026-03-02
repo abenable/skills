@@ -1,6 +1,6 @@
 ---
 name: fork-manager
-description: Manage forks with open PRs - sync upstream, rebase branches, track PR status, and maintain production branches with pending contributions. Use when syncing forks, rebasing PR branches, building production branches that combine all open PRs, reviewing closed/rejected PRs, or managing local patches kept outside upstream. Requires Git and GitHub CLI (gh).
+description: Manage forks with open PRs - sync upstream, rebase branches, track PR status, and maintain production branches with pending contributions. Supports automatic conflict resolution via --auto-resolve flag (spawns AI subagents to resolve rebase conflicts). Use when syncing forks, rebasing PR branches, building production branches that combine all open PRs, reviewing closed/rejected PRs, or managing local patches kept outside upstream. Requires Git and GitHub CLI (gh).
 metadata: {"openclaw": {"requires": {"bins": ["git", "gh"]}}}
 ---
 
@@ -23,6 +23,47 @@ Manage forks where you contribute PRs but also use improvements before they're m
 - Triaging/ranking/prioritizing issues → use `issue-prioritizer` skill instead
 - Reviewing code changes before publishing a PR → use `pr-review` skill instead
 - Creating new PRs from scratch (not fork sync) → use `gh pr create` directly
+
+## Execution Model — Orchestrator + Worker
+
+**A skill NUNCA deve ser executada inline pelo agente principal.** Sempre usar o padrão orchestrator/worker:
+
+### Fluxo
+
+1. **Orchestrator (agente principal)** — prepara o contexto e spawna um subagente:
+   ```
+   sessions_spawn(
+     task: "<prompt completo com contexto do repo, config, último history>",
+     model: "<model adequado>",
+     mode: "run"
+   )
+   ```
+2. **Worker (subagente)** — executa o full-sync/status/rebase/etc. Lê a SKILL.md, segue o fluxo, escreve history.
+3. **Monitoramento** — o orchestrator checa progresso a cada **4 minutos** via `sessions_list` / `sessions_history`:
+   - Se o worker estiver ativo e progredindo → aguarda
+   - Se o worker estiver parado/travado (sem output novo por 2 checks consecutivos) → `subagents kill` + spawna novo worker
+   - Se o worker completou → lê o resultado e reporta ao usuário
+4. **Fallback** — se o worker falhar (crash, timeout, erro):
+   - Orchestrator verifica o estado do repo (`git status`, último checkpoint)
+   - Spawna novo worker com contexto atualizado incluindo o ponto onde parou
+   - Máximo de **2 retries** antes de reportar falha ao usuário
+
+### Contexto para o Worker
+
+O orchestrator deve incluir no prompt do worker:
+
+- Path da SKILL.md (para o worker ler e seguir)
+- Config do repo (inline ou path)
+- Última entrada do history (resumo ou path)
+- Modo de execução (full-sync, status, rebase-all, etc.)
+- Se é cron mode ou manual
+- Quaisquer instruções específicas do usuário
+
+### Por que subagente?
+
+- **Resiliência:** se o worker falha, o orchestrator pode recuperar
+- **Context window:** a skill é pesada (145+ PRs = muito output). O worker gasta seu context sem poluir o agente principal
+- **Paralelismo futuro:** permite spawnar workers para repos diferentes simultaneamente
 
 ## Cron Mode
 
@@ -69,6 +110,7 @@ Formato do `config.json`:
   "productionBranch": "main-with-all-prs",
   "upstreamRemote": "upstream",
   "forkRemote": "origin",
+  "autoResolveConflicts": false,
   "openPRs": [123, 456],
   "prBranches": {
     "123": "fix/issue-123",
@@ -92,6 +134,29 @@ Formato do `config.json`:
   }
 }
 ```
+
+### Resolução automática de conflitos (`autoResolveConflicts`)
+
+A resolução automática pode ser ativada de **duas formas** (qualquer uma basta):
+
+1. **Flag de invocação** (ad-hoc, por execução):
+   ```
+   /fork-manager --auto-resolve
+   /fork-manager full-sync --auto-resolve
+   ```
+2. **Config persistente** (sempre ativo pra aquele repo):
+   ```json
+   { "autoResolveConflicts": true }
+   ```
+
+| Fonte | Comportamento |
+|-------|---------------|
+| Nenhuma (default) | Conflitos são reportados mas **não resolvidos**. Relatório inclui "⚠️ Conflitos requerem aval do desenvolvedor." |
+| `--auto-resolve` OU `config.autoResolveConflicts: true` | Spawna subagentes Opus para resolver conflitos. Resultados classificados como trivial/semântico/irresolvível. |
+
+**Precedência:** `--auto-resolve` na invocação ativa a resolução mesmo se o config diz `false`. Não existe `--no-auto-resolve` — se o config diz `true` e o usuário não quer resolver, basta não rodar o passo manualmente.
+
+**Para usuários do ClawHub:** basta passar `--auto-resolve` no comando. Nenhuma configuração de repo necessária.
 
 ### Campos de `localPatches`
 
@@ -444,6 +509,83 @@ Para cada branch em `prBranches`:
 3. Push com --force-with-lease
 4. Reportar sucesso/falha
 
+### `resolve-conflicts` - Resolução automática de conflitos via subagentes
+
+> **Requer `--auto-resolve` na invocação OU `autoResolveConflicts: true` no config do repo.** Se nenhum dos dois, este comando não é executado e conflitos são apenas reportados com a nota "⚠️ Conflitos requerem aval do desenvolvedor."
+
+Após `rebase-all` detectar conflitos, o **orchestrator** (agente principal) spawna subagentes individuais para tentar resolver cada conflito automaticamente.
+
+#### Fluxo
+
+1. O worker do `rebase-all` retorna a lista de branches com conflito
+2. O orchestrator agrupa os conflitos e spawna **até 5 subagentes simultâneos** (model: Opus)
+3. Conforme subagentes terminam, novos são lançados até esgotar a fila
+4. Cada subagente tem **timeout de 10 minutos**
+5. Resultados são coletados e integrados no relatório final
+
+#### Prompt do subagente resolver
+
+Cada subagente recebe:
+
+```
+Resolve o conflito de rebase da branch <branch> (PR #<number>) no repo <localPath>.
+
+## Contexto
+- Upstream: <upstreamRemote>/<mainBranch>
+- Branch do PR: <originRemote>/<branch>
+- Arquivos em conflito: <lista de arquivos do erro de rebase>
+
+## Passos
+1. cd <localPath>
+2. git checkout -B <branch> <originRemote>/<branch> --no-track
+3. git rebase <upstreamRemote>/<mainBranch>
+   → O rebase vai parar com conflito
+4. Para cada arquivo em conflito:
+   a. Ler o arquivo com os marcadores de conflito (<<<<<<<, =======, >>>>>>>)
+   b. Entender o que o upstream mudou (OURS) vs o que o PR mudou (THEIRS)
+   c. Resolver preservando a intenção de ambos
+   d. git add <arquivo>
+5. git rebase --continue
+6. Se houver mais conflitos em commits subsequentes, repetir 4-5
+7. git push <originRemote> <branch> --force-with-lease
+
+## Regras de resolução
+- **Arquivo deletado no upstream + modificado pelo PR:** aceitar a deleção do upstream (nosso PR targeted código que não existe mais). git rm <arquivo> && git rebase --continue
+- **Import/formatting conflicts:** mesclar ambos, preservar imports de ambos os lados
+- **Lógica alterada em ambos os lados:** preservar a mudança do upstream E encaixar o fix do PR. Se o fix do PR não faz mais sentido com o novo código upstream, reportar como UNRESOLVABLE.
+- **NUNCA alterar a lógica do PR** — apenas adaptar ao novo contexto do upstream
+
+## Output
+Responda com EXATAMENTE um destes formatos:
+
+RESOLVED|<branch>|trivial|<resumo de 1 linha>
+RESOLVED|<branch>|semantic|<resumo de 1 linha>
+UNRESOLVABLE|<branch>|<motivo de 1 linha>
+```
+
+#### Classificação do resultado
+
+| Resultado | Significado | Ação |
+|-----------|-------------|------|
+| `RESOLVED\|trivial` | Conflito mecânico resolvido (imports, formatting, deleted files) | ✅ Push feito, sem necessidade de revisão |
+| `RESOLVED\|semantic` | Conflito envolvendo lógica de negócio resolvido | ⚠️ Push feito, **marcar no report para revisão humana** |
+| `UNRESOLVABLE` | Subagente não conseguiu resolver sem risco | ❌ Não faz push, escala no report |
+
+#### Após resolução
+
+Para branches resolvidas com sucesso:
+1. Verificar que o push foi feito (`git log --oneline <originRemote>/<branch> -1`)
+2. Tentar rebase novamente para confirmar que está clean
+3. Atualizar `notes.conflictBranches` no config: remover entries resolvidas
+
+Para branches não resolvidas:
+1. Manter em `notes.conflictBranches` com ciclo incrementado
+2. Incluir no relatório com o motivo do subagente
+
+#### Integração com build-production
+
+Após `resolve-conflicts`, o `build-production` roda normalmente. Branches que foram resolvidas no rebase agora devem mergear clean na production. Se ainda houver conflito de **production merge** (diferente do conflito de rebase), o `build-production` trata como sempre: abort e reportar.
+
 ### `update-config` - Atualizar config com PRs atuais
 
 ```bash
@@ -512,7 +654,7 @@ for branch in <localPatches>; do
 done
 
 # Push
-git push <originRemote> <productionBranch> --force
+git push <originRemote> <productionBranch> --force-with-lease
 
 # Restaurar arquivos não-commitados
 if [ "$STASHED" = "1" ]; then
@@ -561,14 +703,22 @@ Para cada entry em `localPatches` cuja `reviewDate` já passou:
 
 1. **Stash** - `git stash --include-untracked` se houver arquivos não-commitados
 2. `sync` - Atualizar main
-3. `update-config` - Atualizar lista de PRs
-4. **`review-closed`** - Revisar PRs recém-fechados/mergeados (interativo)
-5. **`audit-open`** - Auditar PRs abertos por redundância/obsolescência (interativo)
-6. **`review-patches`** - Reavaliar local patches com reviewDate vencida (interativo)
-7. `rebase-all` - Rebase de todas as branches (PRs + local patches)
-8. `build-production` - Recriar branch de produção (PRs + local patches)
-9. **Pop stash** - `git stash pop` para restaurar arquivos locais
-10. Remind user to run their project's build command if needed
+   - **Before sync:** record `OLD_SHA=$(git rev-parse upstream/main)`
+   - **After sync:** record `NEW_SHA=$(git rev-parse upstream/main)`
+3. **`post-sync hooks`** *(optional, repo-specific)* - Run custom post-sync actions
+   - Skip if `OLD_SHA == NEW_SHA` (no upstream changes)
+   - Hooks are defined per-repo in `config.json` under `"postSyncHooks"` (array of shell commands or descriptions)
+   - Example: detect CHANGELOG changes, update downstream skills, trigger CI
+   - If no hooks configured: skip this step entirely
+4. `update-config` - Atualizar lista de PRs
+5. **`review-closed`** - Revisar PRs recém-fechados/mergeados (interativo)
+6. **`audit-open`** - Auditar PRs abertos por redundância/obsolescência (interativo)
+7. **`review-patches`** - Reavaliar local patches com reviewDate vencida (interativo)
+8. `rebase-all` - Rebase de todas as branches (PRs + local patches)
+9. **`resolve-conflicts`** *(only if `--auto-resolve` flag OR `autoResolveConflicts: true` in config)* - Resolver conflitos de rebase automaticamente via subagentes (Opus, até 5 paralelos, 10min timeout cada). Se nenhum dos dois, pular este passo.
+10. `build-production` - Recriar branch de produção (PRs + local patches)
+11. **Pop stash** - `git stash pop` para restaurar arquivos locais
+12. Remind user to run their project's build command if needed
 
 **Nota sobre ordem:** `update-config` roda **antes** de `review-closed` porque é ali que PRs reabertos são detectados e restaurados automaticamente. Depois, `review-closed` processa PRs que foram genuinamente fechados. Por fim, `audit-open` roda por último, já com a lista de PRs abertos atualizada (incluindo os reabertos).
 
@@ -591,6 +741,27 @@ Após qualquer operação, gerar relatório:
 | 123 | fix/issue-123 | ✅ Up to date    | None              |
 | 456 | feat/feature  | ⚠️ Needs rebase  | Run rebase        |
 | 789 | fix/bug       | ❌ Has conflicts | Manual resolution |
+
+#### 🔧 Resolução Automática de Conflitos
+
+_Seção presente apenas quando resolução automática está ativa (`--auto-resolve` ou `autoResolveConflicts: true`). Caso contrário, substituir por:_
+> ⚠️ **Conflitos requerem aval do desenvolvedor.** Resolução automática não ativada. Use `--auto-resolve` para tentar resolver automaticamente.
+
+_Quando ativa: Conflitos semânticos (⚠️) foram resolvidos automaticamente mas **requerem revisão humana** — o subagente pode ter interpretado mal a intenção do código._
+
+| #   | Branch        | Tipo      | Resultado          | Detalhe                          |
+| --- | ------------- | --------- | ------------------ | -------------------------------- |
+| 123 | fix/issue-123 | trivial   | ✅ Resolvido        | Removed deleted test file        |
+| 456 | fix/issue-456 | semântico | ⚠️ Resolvido (revisar) | Adapted runner call to new API   |
+| 789 | fix/issue-789 | —         | ❌ Não resolvido    | Lógica incompatível com upstream |
+
+#### 🔴 Conflitos persistentes (3+ ciclos)
+
+_Seção presente apenas quando há conflitos que persistem por 3 ou mais execuções consecutivas da skill, mesmo após tentativa de resolução automática. Esses PRs merecem atenção prioritária: considerar dropar, recriar sobre o main atual, ou resolver manualmente._
+
+| #   | Branch        | Ciclos | Arquivo(s)        | Recomendação        |
+| --- | ------------- | ------ | ----------------- | ------------------- |
+| 789 | fix/bug       | 5      | agent-runner.ts   | 🗑️ Dropar ou recriar |
 
 ### Local Patches (Z total)
 
@@ -641,6 +812,8 @@ _Seção presente apenas quando há PRs reabertos no ciclo atual._
 - Sempre fazer backup antes de operações destrutivas
 - Use the project's package manager for build commands (bun/npm/yarn/pnpm)
 - Manter o config atualizado após cada operação
+- **Resolução automática de conflitos (requer `--auto-resolve` ou `autoResolveConflicts: true`):** Quando ativa, após `rebase-all` a skill spawna subagentes (Opus, até 5 paralelos, 10min timeout cada) para tentar resolver conflitos. Conflitos triviais (imports, formatting, arquivos deletados) são resolvidos e pushed sem necessidade de revisão. **Conflitos semânticos** (lógica de negócio) são resolvidos e pushed mas **marcados no relatório como ⚠️ para revisão humana**. Se o subagente não conseguir resolver, marca como ❌ e não faz push. **Quando desativada**, conflitos são apenas reportados.
+- **Conflitos persistentes (3+ ciclos):** Quando um conflito persiste por 3+ execuções consecutivas (tracked pelo sufixo "Nth cycle" em `notes.conflictBranches`), escalar no relatório com seção dedicada "🔴 Conflitos persistentes" e recomendar ação: dropar o PR, recriar a branch, ou resolver manualmente. O ciclo é incrementado a cada execução onde o conflito reaparece, **mesmo que a resolução automática tenha sido tentada e falhado**.
 - **Local patches são cidadãos de primeira classe:** rebase, build e relatório incluem tanto PRs abertos quanto local patches
 - **Nunca remover automaticamente um PR fechado sem merge.** Sempre passar pelo fluxo `review-closed` para decisão do usuário
 - **Review dates em local patches:** ao criar um local patch, definir uma data de revisão (default: 30 dias). No `full-sync`, patches com review vencida são apresentados ao usuário para reavaliação
@@ -686,12 +859,12 @@ This skill performs operations that require broad filesystem and network access 
 
 These capabilities are inherent to fork management and cannot be removed without breaking core functionality.
 
-## Usage Example
+## Usage Examples
 
+### Basic sync
 User: "sync my fork of project-x"
 
 Agent:
-
 1. Load config from `$SKILL_DIR/repos/project-x/config.json`
 2. Run `status` to assess current state
 3. If main is behind, run `sync`
@@ -699,3 +872,13 @@ Agent:
 5. Update `productionBranch` if needed
 6. Remind user to rebuild if needed
 7. Report results to user
+
+### Sync with auto-resolve
+User: "/fork-manager --auto-resolve" or "/fork-manager full-sync --auto-resolve"
+
+Agent:
+1. Same as basic sync, but after `rebase-all`:
+2. For each conflict, spawn a resolver subagent (Opus)
+3. Collect results (trivial ✅ / semantic ⚠️ / unresolvable ❌)
+4. Re-run `build-production` with resolved branches
+5. Report includes resolution table with review flags

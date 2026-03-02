@@ -49,7 +49,7 @@ echo "✅ Committed: $COMMIT_MSG"
 echo ""
 echo "=== Pushing to origin main ==="
 # Push with embedded credentials
-git push https://Roger0808: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@github.com/Roger0808/openclaw.git main
+git push https://Roger0808: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@github.com/Roger0808/openclaw.git main
 echo "✅ Pushed to origin main"
 
 echo ""

@@ -26,6 +26,38 @@ Automated git commit and push for the OpenClaw workspace.
 3. Commits with message (default: "update: $(date)")
 4. Pushes to origin main
 
+## Usage in Skill Upload Workflow
+
+When uploading skills to ClawHub, use OpenClaw Git to backup all workspace changes:
+
+### Skill Upload Complete Workflow
+
+```bash
+# Step 1: Upload skill to ClawHub (manual or scripted)
+cd ~/.openclaw/workspace/skills/<skill-name>
+clawhub publish . --version <version> --changelog "description"
+
+# Step 2: Commit and push all workspace changes using OpenClaw Git
+~/.openclaw/workspace/skills/openclaw-git/scripts/git-push.sh "Upload <skill-name> v<version> and sync workspace"
+
+# Alternative: Use default timestamp message
+~/.openclaw/workspace/skills/openclaw-git/scripts/git-push.sh
+```
+
+### What Gets Backed Up
+
+- Skill code changes
+- Documentation updates (SKILL.md, TOOLS.md, MEMORY.md)
+- Configuration files
+- Learning records (.learnings/)
+- Daily memory files
+
+### Integration Points
+
+This script is automatically called at the end of the "skill upload" workflow to ensure all changes are persisted to Git before finishing.
+
+---
+
 ## Prerequisites
 
 - Git repository initialized at `/home/roger/.openclaw`
@@ -36,7 +68,7 @@ Automated git commit and push for the OpenClaw workspace.
 
 GitHub:
 - Username: Roger0808
-- Token: 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
+- Token: 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
 
 ## Script Reference
 

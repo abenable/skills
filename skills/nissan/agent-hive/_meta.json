@@ -3,9 +3,15 @@
   "slug": "agent-hive",
   "displayName": "Agent Hive",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772222495816,
-    "commit": "https://github.com/openclaw/skills/commit/086d5b1d9b820e59725285a099e077591bfa6672"
+    "version": "1.1.1",
+    "publishedAt": 1772399330815,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772222495816,
+      "commit": "https://github.com/openclaw/skills/commit/086d5b1d9b820e59725285a099e077591bfa6672"
+    }
+  ]
 }

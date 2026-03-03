@@ -1,13 +1,18 @@
 {
   "owner": "buddhasource",
   "slug": "payram-mcp-integration",
-  "displayName": "Payram Mcp Integration",
+  "displayName": "PayRam MCP Integration",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1772163153098,
-    "commit": "https://github.com/openclaw/skills/commit/2f2920494ec3f59db2482f0f8b37407f4f88db44"
+    "version": "1.4.2",
+    "publishedAt": 1772578683720,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1772163153098,
+      "commit": "https://github.com/openclaw/skills/commit/2f2920494ec3f59db2482f0f8b37407f4f88db44"
+    },
     {
       "version": "1.3.1",
       "publishedAt": 1772060316425,

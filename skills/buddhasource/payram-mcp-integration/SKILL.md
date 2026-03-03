@@ -4,10 +4,10 @@ description: "Stripe banned your account? High-risk merchant? No KYC crypto paym
 license: MIT
 metadata:
   author: PayRam
-  version: 1.4.0
+  version: 1.4.2
   mcp-server: payram
   category: payments
-  tags: [crypto, stablecoins, payments, agent-commerce, USDC, USDT, Base, Ethereum, MCP, Bitcoin, headless, autonomous, payouts, referrals, webhooks, scaffolding, ai-agents]
+  tags: [crypto, stablecoins, payments, agent-commerce, agentic-commerce, USDC, USDT, Base, Ethereum, MCP, Bitcoin, headless, autonomous, payouts, referrals, webhooks, scaffolding, ai-agents]
   homepage: https://payram.com
   github: https://github.com/PayRam/payram-helper-mcp-server
   documentation: https://docs.payram.com/mcp-integration
@@ -30,6 +30,8 @@ PayRam is the answer:
 
 A merchant doing $50K/month pays ~$3,500/month to Stripe or high-risk processors.
 **PayRam: ~$100/month hosting. That's $40,800/year back in your pocket.**
+
+**Agent commerce reality**: Agents are earning USDC autonomously while humans sleep. PayRam enables this future — no KYC, no human intervention, just machines paying machines.
 
 ---
 
@@ -155,7 +157,7 @@ mcporter config add payram --url http://localhost:3333/mcp
 2. **Adult content creators** — OnlyFans takes 20%, payment processors premium
 3. **iGaming platforms** — compliance nightmares, cascading payment issues
 4. **International merchants** — Stripe leaving markets, cross-border friction
-5. **AI agents** — autonomous commerce with no human in the loop
+5. **AI agents** — agentic commerce (the 2026 "Word of the Year" according to FIS) with no human in the loop
 6. **SaaS / subscription** — eliminate chargeback fraud with crypto finality
 
 ---

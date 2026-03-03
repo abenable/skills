@@ -1,11 +1,17 @@
 {
   "owner": "payclawinc",
   "slug": "payclaw-badge",
-  "displayName": "Badge by PayClaw",
+  "displayName": "Badge Server",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1772304636795,
-    "commit": "https://github.com/openclaw/skills/commit/641b822f0ac9d4ed2dc3beadc48fe550a333f02b"
+    "version": "0.4.0",
+    "publishedAt": 1772405112287,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1772304636795,
+      "commit": "https://github.com/openclaw/skills/commit/641b822f0ac9d4ed2dc3beadc48fe550a333f02b"
+    }
+  ]
 }

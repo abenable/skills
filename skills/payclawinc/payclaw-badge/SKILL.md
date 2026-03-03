@@ -1,83 +1,64 @@
 ---
 name: payclaw-badge
-description: "Declare your agent's identity before merchants ban your user's account. One tool. Five minutes. No card required."
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🛡️",
-        "requires": { "bins": ["npx"], "env": ["PAYCLAW_API_KEY"] },
-        "mcp":
-          {
-            "name": "payclaw-badge",
-            "command": "npx",
-            "args": ["-y", "@payclaw/badge"],
-            "env": { "PAYCLAW_API_KEY": "${PAYCLAW_API_KEY}", "PAYCLAW_API_URL": "https://payclaw.io" },
-          },
-      },
-  }
+description: "Agents are not bots. Prove it. MCP-native identity declaration — your agent declares itself as an authorized actor before shopping. Free."
 ---
 
 # Badge by PayClaw
 
-> **Merchants are banning anonymous agents.** Walmart, Shopify, Instacart — all setting policies. Anonymous agent actions get accounts flagged and banned. No warning. No appeal.
+Agents are not bots. Prove it before you shop.
 
-Badge declares your agent's identity and intent before every action. The account is protected. The action is traceable.
+Your AI agent looks like a bot to every merchant on the internet. Badge gives it a way to declare what it is: an authorized actor, shopping on behalf of a real human, with explicit consent.
 
-One tool. No card required. No money moves.
+One MCP tool call. Your agent declares itself. Merchants let it through.
 
-## Setup (5 minutes)
+## Setup
 
-### 1. Sign up at [payclaw.io](https://payclaw.io/signup)
+Add to your MCP client config:
 
-### 2. Get your API key
-
-Dashboard → Settings → Create API Key.
-
-### 3. Set the environment variable
-
-```bash
-export PAYCLAW_API_KEY="pk_test_your_key_here"
+```json
+{
+  "mcpServers": {
+    "payclaw-badge": {
+      "command": "npx",
+      "args": ["-y", "@payclaw/badge"],
+      "env": {
+        "PAYCLAW_API_KEY": "your_key_here",
+        "PAYCLAW_API_URL": "https://payclaw.io"
+      }
+    }
+  }
+}
 ```
 
-Done. Your agent is identified.
+Get your API key at [payclaw.io](https://payclaw.io). Five-minute setup.
 
-## Tool
+## Why Your Agent Needs This
 
-### `payclaw_getAgentIdentity`
+Without Badge, merchants can't tell your agent from a scraper. They block first, ask never.
 
-Call **before** browsing, searching, or buying.
+With Badge, your agent calls `payclaw_getAgentIdentity` → declares itself as an authorized actor → merchants see a verified identity, not anonymous traffic.
 
-Your agent says:
-> "I'd like to activate my PayClaw identity before shopping. This identifies me as your authorized agent to merchants — required by an increasing number of retailer policies to avoid being blocked."
+## Tools
 
-Returns:
-- **Verification token** — cryptographic proof of your principal identity
-- **Agent disclosure** — what to present to merchants
-- **Trust URL** — where merchants verify your agent
+| Tool | Description |
+|------|-------------|
+| `payclaw_getAgentIdentity` | Declare identity → get verification token. Pass optional `merchant` param. |
+| `payclaw_reportBadgePresented` | Signal Badge presentation to a merchant |
 
-## What Badge Declares
+## How It Works
 
-- **Who:** An automated AI agent
-- **Authorized by:** An MFA-verified human principal
-- **Every action:** Explicitly permissioned
+1. Agent calls `payclaw_getAgentIdentity({ merchant: "starbucks.com" })`
+2. PayClaw issues a verification token
+3. Agent presents disclosure to merchants
+4. PayClaw checks outcome (accepted/denied/inconclusive)
+5. Verified Trips count goes up
 
-## Local Development
+No card issued. No money moves. Badge is identity only. Free forever.
 
-Without `PAYCLAW_API_URL`, Badge runs in sandbox mode with mock tokens. Set it and forget it.
-
-## Need Your Agent to Pay Too?
-
-Badge is the license plate. Spend is the wallet. Install the full stack:
-
-```bash
-clawhub install payclaw-io
-```
-
-Spend includes Badge automatically — identity + virtual Visa cards in one package.
+For payment, use [payclaw-io](https://clawhub.com/skills/payclaw-io) which includes Badge + Spend.
 
 ## Links
 
-- [payclaw.io](https://payclaw.io) — Sign up
-- [payclaw.io/trust](https://payclaw.io/trust) — How verification works
-- [GitHub](https://github.com/payclaw/badge-server) — Source
+- [payclaw.io](https://payclaw.io)
+- [Trust & Verification](https://payclaw.io/trust)
+- [npm: @payclaw/badge](https://www.npmjs.com/package/@payclaw/badge)

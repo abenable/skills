@@ -1,0 +1,11 @@
+{
+  "owner": "zw008",
+  "slug": "vmware-aiops",
+  "displayName": "Vmware Aiops",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1772502115690,
+    "commit": null
+  },
+  "history": []
+}

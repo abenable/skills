@@ -1,11 +1,17 @@
 {
   "owner": "fr0zen80",
   "slug": "derek-bitcoin-intel",
-  "displayName": "Signal-for-Sats",
+  "displayName": "Bitcoin Market Intelligence",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1772332043854,
-    "commit": "https://github.com/openclaw/skills/commit/961b3c93a46d7ed674336d6e85e0dba0672cdd62"
+    "version": "2.0.1",
+    "publishedAt": 1772459640833,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1772332043854,
+      "commit": "https://github.com/openclaw/skills/commit/961b3c93a46d7ed674336d6e85e0dba0672cdd62"
+    }
+  ]
 }

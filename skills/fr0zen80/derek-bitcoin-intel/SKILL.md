@@ -1,77 +1,49 @@
-# Signal-for-Sats
+# Bitcoin Market Intelligence
 
-Bitcoin market intelligence that pays for itself — delivered over Lightning.
-
-## What This Is
-
-Derek is an autonomous Bitcoin intelligence agent. He monitors markets, curates non-obvious news, tracks Lightning Network graph activity, and serves it all as a paid API over the L402 protocol.
-
-No API keys. No subscriptions. No accounts. Just sats for signal.
-
-## What Makes This Different
-
-Derek doesn't just wrap free APIs. He runs his own Lightning node and pays for premium data sources with micropayments — then distills that into intelligence you can query on demand. The L402 protocol means your agent pays a Lightning invoice and gets data back. One round trip. Done.
+Live Bitcoin market data and curated news — served over Lightning (L402) micropayments.
 
 ## What You Get
 
-### /api/health — Free
-Service status, available endpoints, and pricing. Hit this first.
+Your agent pays a few sats and gets back structured JSON with real market intelligence — not recycled headlines.
 
-### /api/market-brief — 100 sats
-Updated every 1-4 hours. Returns:
-- Current BTC price and 24h change
-- Curated news coverage — non-obvious Bitcoin stories from the last 24h, not recycled headlines
-- Breaking alert state
-- Source attribution
+| Endpoint | Cost | What's Inside |
+|----------|------|--------------|
+| `/api/health` | Free | Service status, endpoints, pricing |
+| `/api/market-brief` | 100 sats | BTC price, 24h change, curated non-obvious news, alert state |
+| `/api/latest-alert` | 50 sats | Most recent breaking alert (5%+ moves, major events) |
 
-### /api/latest-alert — 50 sats
-Updated every 15 minutes. Returns the most recent breaking alert — triggered by significant price moves (>5%) or major events (exchange hacks, regulatory shifts, ETF decisions).
+Updates every 1–4 hours (market brief) and every 15 minutes (alerts).
+
+## Quick Start
+
+No API keys. No accounts. Just HTTP requests — free endpoints work with plain `curl`.
+
+```bash
+# Check status (free — no Lightning needed)
+curl http://jnfaphddbeubdgpsbrw4d2z6wjew57djdzyrzkbt2ta7bi3wfzmfsfyd.onion/api/health
+```
+
+For paid endpoints, you need a way to pay Lightning invoices inline. Options:
+
+```bash
+# Option 1: lnget (auto-pays L402 invoices)
+lnget -q http://jnfaphddbeubdgpsbrw4d2z6wjew57djdzyrzkbt2ta7bi3wfzmfsfyd.onion/api/market-brief
+
+# Option 2: Any L402-compatible HTTP client
+# The server returns HTTP 402 with a Lightning invoice — pay it, resubmit with the token
+```
 
 ## Requirements
 
-- `lnget` installed ([github.com/lightninglabs/lnget](https://github.com/lightninglabs/lnget))
-- A configured Lightning node (LND) with a funded channel
-- Tor access for reaching the .onion endpoint
+- **Free endpoints:** `curl` + Tor (or a Tor proxy)
+- **Paid endpoints:** An L402-capable HTTP client (`lnget`, `l402-fetch`, or custom) + a funded Lightning channel
 
-## Usage
-
-```bash
-# Check service status (free)
-lnget http://jnfaphddbeubdgpsbrw4d2z6wjew57djdzyrzkbt2ta7bi3wfzmfsfyd.onion/api/health
-
-# Get market brief (100 sats)
-lnget -q http://jnfaphddbeubdgpsbrw4d2z6wjew57djdzyrzkbt2ta7bi3wfzmfsfyd.onion/api/market-brief
-
-# Get latest alert (50 sats)
-lnget -q http://jnfaphddbeubdgpsbrw4d2z6wjew57djdzyrzkbt2ta7bi3wfzmfsfyd.onion/api/latest-alert
-```
-
-
-> **Note:** `lnget` v0.1.0 has a known compatibility issue with some L402 servers using vanilla macaroons. If you encounter parsing errors, use `curl` with manual invoice payment, or a wrapper script that handles the pay-and-resubmit flow. See the [lnget repo](https://github.com/lightninglabs/lnget) for updates.
-
-## How It Works
-
-1. Your agent calls `lnget` with the endpoint URL
-2. The server responds with HTTP 402 and a Lightning invoice
-3. `lnget` automatically pays the invoice from your Lightning node
-4. The server verifies payment and returns the data
-5. `lnget` caches the L402 token — subsequent requests reuse it
-
-## Pricing
-
-| Endpoint | Cost | Update Frequency |
-|----------|------|-----------------|
-| /api/health | Free | Real-time |
-| /api/market-brief | 100 sats | Every 1-4 hours |
-| /api/latest-alert | 50 sats | Every 15 minutes |
-
-## Example Response (market-brief)
+## Example Response
 
 ```json
 {
   "endpoint": "market-brief",
   "timestamp": "2026-02-28T20:52:36Z",
-  "source": "derek-bitcoin-intelligence",
   "price": {
     "price_usd": 67042.0,
     "change_24h_pct": 2.2
@@ -83,10 +55,27 @@ lnget -q http://jnfaphddbeubdgpsbrw4d2z6wjew57djdzyrzkbt2ta7bi3wfzmfsfyd.onion/a
       "timestamp": "2026-02-27T12:00:00-05:00"
     }
   ],
-  "alert_state": { ... }
+  "alert_state": {
+    "active": false,
+    "last_alert": "2026-02-26T14:30:00Z"
+  }
 }
 ```
 
-## About
+## How L402 Works
 
-Signal-for-Sats is powered by Derek, an autonomous Bitcoin intelligence agent built on LND, Aperture (L402 reverse proxy), and a Tor hidden service. He runs 24/7, monitors markets and on-chain activity, and serves curated analysis to any agent that can pay a Lightning invoice. Built for the agent economy — where machines pay machines for signal.
+1. Your agent sends a request to a paid endpoint
+2. Server responds with HTTP 402 + a Lightning invoice
+3. Your agent pays the invoice (fractions of a cent)
+4. Server verifies payment, returns data
+5. The L402 token is cached — reuse it until it expires
+
+No signup. No rate limits. No API keys. Sats in, signal out.
+
+## What Powers This
+
+An autonomous Bitcoin intelligence agent running 24/7 on LND + Aperture (L402 reverse proxy) over a Tor hidden service. It monitors markets, tracks on-chain metrics, curates news from dozens of sources, and distills it into structured data for other agents.
+
+Built for the agent economy — machines paying machines for signal.
+
+> **Note:** `lnget` v0.1.0 has a known macaroon parsing bug with some L402 servers. If you hit errors, use a wrapper script that handles the 402→pay→resubmit flow manually.

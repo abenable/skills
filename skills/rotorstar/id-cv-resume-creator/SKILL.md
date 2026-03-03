@@ -31,14 +31,14 @@ metadata:
         note: "Optional for basic CV creation (3/day without ID). Required for callbacks and higher rate limits."
   hitl:
     supported: true
-    spec_version: "0.6"
+    spec_version: "0.7"
     types: [confirmation, input, selection, approval, escalation]
     notifications: [polling, sse, callback]
     review_base_url: "https://www.talent.de/en/hitl/review"
     timeout_default: "24h"
     grace_period: "5min"
     discovery: "https://www.talent.de/.well-known/hitl.json"
-    info: "May ask user to confirm context, enter data, select template, approve CV draft, or handle escalations."
+    info: "May ask requestor to confirm context, enter data, select template, approve CV draft, or handle escalations."
 ---
 
 # CV Builder — Create CVs via API
@@ -61,9 +61,19 @@ Create a resume, digital identity, or CV right now — for free. Choose from tem
 Templates span: classic PDF · HTML online · interactive · 3D (Three.js) · gamified.
 Full catalog: [reference/templates.md](reference/templates.md) — live previews: [talent.de/de/cv-template-ideas](https://www.talent.de/de/cv-template-ideas)
 
+## Terminology
+
+Throughout this skill, these terms are used consistently:
+
+| Term | Meaning |
+|------|---------|
+| **requestor** | The human who commissioned this CV build — the person providing data, making decisions (slug, template, approval), and receiving the claim token. All agent actions are on their behalf. |
+| **human** | Synonym for requestor in HITL context, used to contrast with automated/AI steps (e.g., "if the human prefers the browser"). |
+| **agent** | You — the AI executing this skill. |
+
 ## Agent Guidelines
 
-> **HITL is required.** You MUST include either `"prefer_hitl": true` (human review) or `"skip_hitl": true` (direct creation). Omitting both returns a 400 error. If a human is present, ALWAYS use `"prefer_hitl": true` — this lets the user choose their URL slug, pick a template, review the data, and approve before publishing. Use `"skip_hitl": true` only for automated pipelines with no human in the loop.
+> **HITL is required.** You MUST include either `"prefer_hitl": true` (human review) or `"skip_hitl": true` (direct creation). Omitting both returns a 400 error. If a human is present, ALWAYS use `"prefer_hitl": true` — this lets the requestor choose their URL slug, pick a template, review the data, and approve before publishing. Use `"skip_hitl": true` only for automated pipelines with no human in the loop.
 
 > **Data principle:** Only use data the requestor has explicitly provided or approved in this conversation. Do not extract personal information from unrelated system contexts or other sessions.
 
@@ -88,7 +98,7 @@ The Access-ID is also the HMAC secret for verifying `X-HITL-Signature` on callba
 
 ### What to say at each step
 
-| Step | Say to the user |
+| Step | Say to the requestor |
 |------|-----------------|
 | Before API call | "Let me set up your CV. I just need a few details." |
 | Slug selection (review_url received) | "Choose your personal URL — this is where your CV will live: [link]" |
@@ -101,7 +111,7 @@ The Access-ID is also the HMAC secret for verifying `X-HITL-Signature` on callba
 1. Ask for (or confirm you already have): firstName, lastName, title, email — the 4 required fields
 2. `POST /api/agent/cv-simple` with `"prefer_hitl": true` and the data
    _Optional: add `"include_pdf": true` to also receive a base64 PDF in the final 201 response. See [PDF Export](#pdf-export)._
-3. Present the `review_url` to the user (they pick slug, template, review data)
+3. Present the `review_url` to the requestor (they pick slug, template, review data)
 4. Poll `poll_url` every 30s until `"status": "completed"`:
    - `{ "status": "pending" }` or `{ "status": "opened" }` → keep polling
    - `{ "status": "completed", "result": { "action": "confirm", "data": {...} } }` → advance with `hitl_continue_case_id`
@@ -149,7 +159,7 @@ Response (202 — human review required):
 }
 ```
 
-Present the review URL to the user:
+Present the review URL to the requestor:
 
 > I've prepared your CV. Please review and make your choices here:
 > **[Review your CV](review_url)**
@@ -161,7 +171,7 @@ Full HITL protocol with all steps, inline submit, edit cycles, and escalation: [
 
 ## HITL Multi-Step Flow
 
-The user goes through up to 5 review steps. The agent loops: present review URL, poll, continue.
+The requestor goes through up to 5 review steps. The agent loops: present review URL, poll, continue.
 
 ```
 Step 1: Confirmation  →  "For whom is this CV?"
@@ -171,7 +181,7 @@ Step 4: Template      →  Human picks template design
 Step 5: Approval      →  Human reviews final CV draft
 ```
 
-Each step returns 202. After the user decides, continue:
+Each step returns 202. After the requestor decides, continue:
 
 ```http
 POST https://www.talent.de/api/agent/cv-simple
@@ -192,7 +202,7 @@ Steps are skipped when you already provide the value:
 - Include `template_id` (top-level) → template selection step is skipped
 - Include both → only confirmation, data review, and approval remain
 
-### Inline Submit (v0.6)
+### Inline Submit (v0.7)
 
 For simple decisions (**confirmation**, **escalation**, **approval**), the 202 response includes `submit_url`, `submit_token`, and `inline_actions`. Agents can submit directly via Bearer token — ideal for Telegram, Slack, WhatsApp where buttons are supported:
 
@@ -226,47 +236,94 @@ Response (201):
   "url": "https://www.talent.de/dev/alex-johnson",
   "cv_id": "cv_abc123",
   "claim_token": "claim_xyz789",
-  "template_id": "007"
+  "template_id": "007",
+  "quality_score": 65,
+  "quality_label": "good",
+  "improvement_suggestions": []
 }
 ```
+
+> ⚠️ **Immediately after receiving a 201 — always share both with the requestor:**
+> 1. **CV URL**: `https://www.talent.de/dev/alex-johnson` — their live profile
+> 2. **Claim link**: `https://www.talent.de/claim/claim_xyz789` — to take ownership and edit
+>
+> The `claim_token` is permanent and never expires. Treat it like a password — share only with the requestor.
 
 Present the result:
 
 > Your CV is live: **talent.de/dev/alex-johnson**
 >
-> To claim ownership, visit: `talent.de/claim/claim_xyz789`
-> Keep this token safe — it never expires.
+> To claim ownership and edit your CV, visit: **talent.de/claim/claim_xyz789**
+> Keep this link safe — it never expires and gives full edit access.
+
+If the response includes `improvement_suggestions`, share them with the requestor and offer to update the CV:
+
+> Your CV score is 35/100. To improve it, I can add: work experience (+25pts), professional summary (+20pts). Want me to ask you a few questions and update it?
 
 ## Agent Loop (Visual)
 
+Both paths — with and without human review — are shown below. Choose ONE per request.
+
 ```mermaid
 flowchart TD
-    A["1 · Ask user for data\nfirstName, lastName, title, email"] --> B
-    B["2 · POST /api/agent/cv-simple\nprefer_hitl: true + cv_data"] --> C
+    START([Agent starts]) --> CHOICE{prefer_hitl\nor skip_hitl?}
 
-    C{Response?}
-    C -->|202 human_input_required| D["3 · Present review_url to user\n'Please review and choose here: [link]'"]
-    D --> E["4 · Poll poll_url every 30s"]
-    E --> F{status?}
-    F -->|pending / opened| E
-    F -->|completed| G{result.action?}
+    %% ── skip_hitl path ──────────────────────────────────────────
+    CHOICE -->|skip_hitl: true| DIRECT["POST /api/agent/cv-simple\nskip_hitl: true + cv_data"]
+    DIRECT --> D201["201 — CV live\nurl · claim_token · quality_score\nimprovement_suggestions"]
+    D201 --> SHARE_NOW["Share url + claim_token\nwith requestor immediately!"]
+    SHARE_NOW --> QUAL{improvement_suggestions\npresent AND attempt < 2?}
+    QUAL -->|No / attempt >= 2| DONE_DIRECT([Done])
+    QUAL -->|Yes| ASK["Ask requestor the questions\nin each agent_action field"]
+    ASK --> REPOST["POST /api/agent/cv-simple\nskip_hitl: true\nenriched cv_data\n(new cv_id each time)"]
+    REPOST --> D201
 
-    G -->|confirm / select| H["POST with hitl_continue_case_id\n→ next step (202)"]
-    H --> C
+    %% ── prefer_hitl path ─────────────────────────────────────────
+    CHOICE -->|prefer_hitl: true| HITL["POST /api/agent/cv-simple\nprefer_hitl: true + cv_data"]
+    HITL --> H202["202 human_input_required\nreview_url · poll_url · events_url"]
+    H202 --> SHOW_URL["Present review_url to requestor\n'Please review here: [link]'"]
+    SHOW_URL --> POLL["Poll poll_url every 30s\n(or use events_url for SSE)"]
+    POLL --> STATUS{status?}
+    STATUS -->|pending / opened\n/ in_progress| POLL
+    STATUS -->|completed| ACTION{result.action?}
+    STATUS -->|expired| EXP{default_action?}
+    STATUS -->|cancelled| CANCELLED([Inform requestor: cancelled])
 
-    G -->|edit| I["Apply note feedback to cv_data\nPOST with hitl_continue_case_id"]
-    I --> C
+    EXP -->|skip| AUTO_PUB["CV auto-published\nurl from poll status"]
+    EXP -->|abort| ABORTED([Inform requestor: expired])
 
-    G -->|reject| J["Escalation step\nPOST with hitl_continue_case_id"]
-    J --> C
-
-    C -->|202 final approval done| K["POST with hitl_approved_case_id\n→ publish"]
-    K --> L["5 · 201 · CV is live!\nPresent url + claim_token to user"]
+    ACTION -->|confirm / select| CONTINUE["POST cv-simple\nhitl_continue_case_id\n+ ALWAYS include cv_data"]
+    ACTION -->|edit| EDIT["Adjust cv_data per note\nthen CONTINUE"]
+    EDIT --> CONTINUE
+    ACTION -->|reject| REJECT["Escalation step\nPOST hitl_continue_case_id"]
+    REJECT --> H202
+    ACTION -->|approve| PUBLISH["POST cv-simple\nhitl_approved_case_id + cv_data"]
+    CONTINUE --> H202
+    PUBLISH --> DONE_HITL(["201 — CV live\nShare url + claim_token"])
 ```
+
+When a HITL case expires, the server applies the `default_action` configured for that step:
+- **`skip`**: CV is auto-published with server-selected slug/template. Poll `poll_url` — it returns `status: "completed"` with `url` in the result.
+- **`abort`**: Flow terminates. Inform the requestor the session expired. Start a new HITL flow with `prefer_hitl: true` if needed.
+
+## Quality Improvement Loop (skip_hitl)
+
+After any 201 response the CV is **immediately live**. Always share `url` and `claim_token` with the requestor first.
+
+If `improvement_suggestions` is non-empty, you may optionally run up to **2 improvement cycles**:
+
+1. For each suggestion: ask the requestor the exact question in `agent_action`
+2. Re-POST with enriched `cv_data` + `skip_hitl: true`
+3. Each re-POST creates a **new CV** with a **new `cv_id`** — the previous one is abandoned
+4. After **2 cycles** OR when `improvement_suggestions` is empty: **stop**
+
+> **Do not loop indefinitely.** An agent that keeps re-posting creates duplicate CVs and wastes the requestor's time.
+
+For `prefer_hitl` flows: after approval, the 201 is already quality-assessed (human reviewed the data). If suggestions appear, ask the requestor directly — do not restart the HITL flow.
 
 ## Direct Creation (No Human Present)
 
-For fully automated pipelines, batch operations, or when the user explicitly says "just create it" — set `"skip_hitl": true`:
+For fully automated pipelines, batch operations, or when the requestor explicitly says "just create it" — set `"skip_hitl": true`:
 
 ```http
 POST https://www.talent.de/api/agent/cv-simple
@@ -292,11 +349,23 @@ Response (201):
   "claim_token": "claim_xyz789",
   "template_id": "018",
   "hitl_skipped": true,
+  "quality_score": 20,
+  "quality_label": "basic",
+  "improvement_suggestions": [
+    {
+      "field": "experience",
+      "issue": "No work experience — CV has low ATS compatibility",
+      "agent_action": "Ask: 'What positions have you held? Part-time and internships count.'",
+      "impact": "+25 quality points",
+      "priority": "high"
+    }
+  ],
+  "next_steps": "Share improvement_suggestions with the requestor and ask the questions in agent_action. Then update the CV via POST /api/agent/cv-simple...",
   "auto_fixes": []
 }
 ```
 
-In direct mode, the server auto-assigns slug (`pro` by default) and template (`018` Amber Horizon). The user has no choice. Use this only when no human needs to review.
+In direct mode, the server auto-assigns slug (`pro` by default) and template (`018` Amber Horizon). The requestor has no choice. Use this only when no human needs to review.
 
 **You MUST choose one:** `"prefer_hitl": true` or `"skip_hitl": true`. Omitting both returns a 400 error.
 
@@ -398,6 +467,10 @@ Do **not** use a generic `skills` array — it will be ignored.
 | `"slug": "dev"` inside `cv_data` | `"slug": "dev"` at top level | `slug` and `template_id` are request-level fields, not inside `cv_data` |
 | `"startDate": "January 2024"` | `"startDate": "2024-01"` | Dates must be `YYYY` or `YYYY-MM` format |
 | Sending empty arrays `"hobbies": []` | Omit the field entirely | Don't send empty arrays — omit what you don't have |
+| POST /respond without Authorization header | Wait for `status=completed` via `poll_url` | Inline submit requires `submit_token` from the 202 response hitl object |
+| POST /respond on an `approval` type step | Poll until `completed`, then `hitl_approved_case_id` | Approval steps require browser review — inline submit not permitted |
+| `hitl_continue_case_id` without `cv_data` | Always include the full `cv_data` object | The server needs `cv_data` on every POST to build the next review step UI |
+| `skip_hitl: true` when a HITL chain is ongoing | Continue the chain with `hitl_continue_case_id` | Creates a separate CV and bypasses the human's review — share one chain per CV |
 
 ## Guardrails
 

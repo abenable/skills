@@ -1,6 +1,6 @@
 # HITL Protocol — Human-in-the-Loop Review
 
-HITL Protocol v0.6 — https://github.com/rotorstar/hitl-protocol
+HITL Protocol v0.7 — https://github.com/rotorstar/hitl-protocol
 
 When creating CVs, add `"prefer_hitl": true` to request human decision points. This pauses the workflow and returns a review URL for the human. The flow supports up to 5 review types in a chained sequence.
 
@@ -124,7 +124,7 @@ Response (202) — confirmation type (inline-capable):
   "status": "human_input_required",
   "message": "Please confirm: is this CV for you?",
   "hitl": {
-    "spec_version": "0.6",
+    "spec_version": "0.7",
     "case_id": "review_a7f3b2c8d9e1f0g4",
     "review_url": "https://www.talent.de/en/hitl/review/review_a7f3b2c8d9e1f0g4?token=abc123...",
     "poll_url": "https://www.talent.de/api/hitl/cases/review_a7f3b2c8d9e1f0g4/status",
@@ -149,7 +149,7 @@ Response (202) — selection type (NOT inline, requires browser):
   "status": "human_input_required",
   "message": "Templates available. Please select one for your CV.",
   "hitl": {
-    "spec_version": "0.6",
+    "spec_version": "0.7",
     "case_id": "review_b8g4c3d9e2f1a5h6",
     "review_url": "https://www.talent.de/en/hitl/review/review_b8g4c3d9e2f1a5h6?token=def456...",
     "poll_url": "https://www.talent.de/api/hitl/cases/review_b8g4c3d9e2f1a5h6/status",
@@ -265,7 +265,7 @@ Returns `304 Not Modified` if nothing changed. The `Retry-After` header suggests
 
 **Rate limiting:** The poll endpoint enforces 60 requests per minute per case. If exceeded, you receive `429 Too Many Requests` with a `Retry-After` header. Always respect the `Retry-After` value to avoid being rate-limited.
 
-## Inline Submit (v0.6)
+## Inline Submit (v0.7)
 
 For simple button-based decisions, agents can submit directly via API without the human opening a browser. This enables native button rendering in Telegram, WhatsApp, Slack, and other messengers.
 
@@ -275,7 +275,7 @@ For simple button-based decisions, agents can submit directly via API without th
 |------|---------|---------|-----|
 | `confirmation` | YES | `confirm`, `cancel` | Simple 2-button decision |
 | `escalation` | YES | `retry`, `skip`, `abort` | 3-button recovery |
-| `approval` | YES | `approve`, `reject` | 2-button review (no edit cycle) |
+| `approval` | YES | `approve`, `reject` | Inline: approve or reject only. Edit cycles require the browser review page (`review_url`). |
 | `selection` | NO | — | Template grid, images, complex UI |
 | `input` | NO | — | Dynamic forms, validation |
 
@@ -347,6 +347,74 @@ Error responses:
 
 Always render the `review_url` as a fallback link alongside inline buttons. If the platform doesn't support buttons, or the action requires complex input (notes, data), the human can click through to the full review page.
 
+## Error Recovery
+
+All HITL endpoints return structured errors:
+
+```json
+{
+  "success": false,
+  "code": "MISSING_TOKEN",
+  "message": "No auth token provided.",
+  "hint": "Inline submit: include Authorization: Bearer {submit_token}...",
+  "docs": "..."
+}
+```
+
+| Code | Endpoint | Meaning | Recovery |
+|------|----------|---------|---------|
+| `MISSING_TOKEN` | POST /respond | No Authorization header and no `?token=` | Inline: add `Authorization: Bearer {submit_token}` from the 202 hitl object. Approval: don't inline — poll until completed. |
+| `INVALID_SUBMIT_TOKEN` | POST /respond | Wrong or expired submit_token | Use the exact `submit_token` from the 202 response hitl object. Do not reconstruct. |
+| `INVALID_TOKEN` | POST /respond | Wrong or expired review/submit token | Use the token exactly as returned. If expired (>24h): start a new HITL flow via `POST /api/agent/cv-simple` with `prefer_hitl: true`. |
+| `INVALID_AUTH` | POST /respond | Both Bearer header AND `?token=` query param sent | Use only one: Bearer header for agent inline submit, `?token=` for browser review page. |
+| `ACTION_NOT_INLINE` | POST /respond | Action not in `inline_actions` for this step | This step requires browser. Open `review_url` and wait for the human to act. Then poll until completed. |
+| `CASE_NOT_FOUND` | GET /status, GET /events | case_id does not exist in DB | Only use `case_id` from the hitl object of a 202 response. IDs expire after 24h — never reuse stale IDs. |
+| `CV_DATA_REQUIRED` | POST cv-simple | cv_data missing on continuation | Include the full `cv_data` object on every POST, even with `hitl_continue_case_id`. |
+| `CASE_EXPIRED` | POST /respond | Case timed out (>24h) | Cases are not renewable. Start a new HITL flow: `POST /api/agent/cv-simple` with `prefer_hitl: true` and fresh `cv_data`. |
+| `DUPLICATE_SUBMISSION` | POST /respond | Already submitted (grace period elapsed) | The case is complete — this is not an error. Poll `poll_url` to get the final result, then continue with `hitl_approved_case_id`. Grace period: 5 minutes from first submission. |
+| `CASE_CANCELLED` | POST /respond | Case was cancelled by user or system | Start a new HITL flow if the user still wants to proceed. |
+| `RATE_LIMIT_EXCEEDED` | GET /status, GET /events | Too many requests | Respect `Retry-After` header. Consider SSE (events_url) instead of polling. |
+| `REPEATED_AUTH_FAILURE` | POST /respond | 3+ missing-token failures from same IP in 5min | Wait `Retry-After` seconds. Verify the correct `submit_token` from the 202 response, then retry. If token expired: get a fresh 202 via `POST /api/agent/cv-simple`. |
+
+### Common Failure Patterns
+
+**Pattern: Trying to inline-approve an approval step**
+```
+Agent calls: POST /respond with Bearer submit_token
+Server returns: 401 INVALID_SUBMIT_TOKEN
+Recovery: Poll poll_url until status=completed, then POST /api/agent/cv-simple { hitl_approved_case_id: "..." } to publish
+```
+
+**Pattern: Missing cv_data on continue**
+```
+Agent calls: POST /api/agent/cv-simple { prefer_hitl: true, hitl_continue_case_id: "C1" }
+Server returns: 400 CV_DATA_REQUIRED
+Recovery: Add cv_data: { firstName, lastName, title, email, ... } to every POST request
+```
+
+**Pattern: Stale case_id from previous session**
+```
+Agent calls: GET /api/hitl/cases/{old_case_id}/events
+Server returns: 404 CASE_NOT_FOUND
+Recovery: Only use case_id values from the current session's 202 responses. IDs > 24h old are expired.
+```
+
+## Case Lifecycle
+
+| Phase | Duration | Status | What happens |
+|-------|----------|--------|--------------|
+| Active | 0–24h | `pending` | Case created; human has not opened the review page yet |
+| Active | 0–24h | `opened` | Review page was opened; human is viewing |
+| Active | 0–24h | `in_progress` | Human has started filling the form; inline submit still accepted |
+| Active | 0–24h | `completed` | Human submitted; grace period (5 min from first submission) allows re-submit |
+| Expired | >24h | `expired` | `default_action` applies automatically (`skip` or `abort`) |
+| Cancelled | Any time | `cancelled` | Human or system cancelled; no further submissions possible |
+
+**Token lifecycle matches the case.** `submit_token` and the `review_url` token are both tied to the same 24h window. When a case expires:
+- Do **not** retry with the old token — it will return `INVALID_TOKEN` or `CASE_EXPIRED`
+- Do **not** reuse the case_id — start a new flow with `prefer_hitl: true`
+- The new 202 response will contain fresh `case_id`, `review_url`, and `submit_token`
+
 ## Tips for Agents
 
 - **IMPORTANT: Use the `review_url` exactly as returned in the response. Do NOT modify, re-encode, or reconstruct this URL. It contains a cryptographic token — any change will invalidate it.**
@@ -354,5 +422,5 @@ Always render the `review_url` as a fallback link alongside inline buttons. If t
 - Use callbacks for instant notification, or poll `poll_url` as a fallback. The case expires after 24h by default.
 - If the user rejects, ask for feedback and create a new CV with adjustments.
 - If the user requests edits, apply their feedback and submit again with `prefer_hitl: true`.
-- **Grace period:** After a human submits, the response can be updated within 5 minutes. After the grace period, the case is final (409 Conflict).
+- **Grace period:** After a human submits, the same action+data can be re-submitted within 5 minutes of the first submission timestamp. After 5 minutes, any further POST returns `409 DUPLICATE_SUBMISSION` — the case is final.
 - Use `"skip_hitl": true` for direct creation (201 response). Omitting both `prefer_hitl` and `skip_hitl` returns a 400 error.

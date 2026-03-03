@@ -3,11 +3,16 @@
   "slug": "id-cv-resume-creator",
   "displayName": "Digital Identity, CV & Resume Creator",
   "latest": {
-    "version": "5.2.3",
-    "publishedAt": 1772138502666,
-    "commit": "https://github.com/openclaw/skills/commit/c8e105ace24bb1fa3f4e177cce261d0d1d595ec0"
+    "version": "5.2.4",
+    "publishedAt": 1772452639580,
+    "commit": null
   },
   "history": [
+    {
+      "version": "5.2.3",
+      "publishedAt": 1772138502666,
+      "commit": "https://github.com/openclaw/skills/commit/c8e105ace24bb1fa3f4e177cce261d0d1d595ec0"
+    },
     {
       "version": "5.2.2",
       "publishedAt": 1772122690871,

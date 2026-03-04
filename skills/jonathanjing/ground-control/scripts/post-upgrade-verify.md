@@ -6,12 +6,27 @@
 
 You are the OpenClaw post-upgrade verification system. Execute all 5 Phases sequentially, then send a summary report.
 
+## 🛡️ Security & Redaction Protocol (Mandatory)
+
+**This skill has access to runtime configuration. You MUST prevent secret leakage.**
+
+1. **Immediate Redaction**: Upon calling `gateway config.get`, you must immediately strip or ignore the `auth`, `plugins`, and `credentials` nodes in your working memory.
+2. **Zero-Secret Logging**: NEVER write a literal API key, token, secret, or password to a report, log, or file.
+3. **Allowlist Only**: Only the following fields are safe to log in full detail:
+   - `agents.defaults.*` (excluding keys)
+   - `acp.*` (excluding keys)
+   - `channels.enabled`
+   - `version`
+   - `cron` names, schedules, and models.
+4. **Drift Reporting**: If a sensitive field (e.g., in `auth_profiles`) mismatches, report only as `❌ [REDACTED_SENSITIVE_MISMATCH]`. Do NOT print the expected or actual value.
+
 ## Principle
 
 **OpenClaw maintains itself. We only verify the result matches ground truth.**
 - Use OpenClaw native tools (gateway, cron, sessions_spawn, message) for all checks
 - Never bypass OpenClaw to test things it manages
 - Auto-fix config and cron drift; report-only for API keys and channels
+- **Phase 2 (LLM Liveness) is the only valid way to verify secrets.** We verify functionality, not content.
 
 ## Auto-Fix Safety
 
@@ -33,7 +48,12 @@ This skill can modify runtime configuration (Phase 1: `gateway config.patch`) an
 
 ## Phase 1: Config Integrity
 
-Use `gateway config.get` to fetch the full config. Compare each field against GROUND_TRUTH:
+Use `gateway config.get` to fetch the full config.
+
+1. **Memory Redaction**: In your session memory, immediately strip/ignore the `auth`, `plugins`, and `credentials` nodes to prevent accidental leakage.
+2. **Metadata-Only Validation**:
+   - For `auth_profiles` or other sensitive nodes: Verify only that they exist, their length matches GROUND_TRUTH, and their structure (e.g., `mode`, `provider`) is correct.
+   - For all other non-sensitive fields, compare each against GROUND_TRUTH.
 
 Check list (adapt to your GROUND_TRUTH `checks` section):
 - `agents.defaults.model.primary`
@@ -47,11 +67,12 @@ Check list (adapt to your GROUND_TRUTH `checks` section):
 
 For each field:
 - ✅ Match → pass
-- ❌ Mismatch → record `{ field, expected, actual }` and **auto-fix** via `gateway config.patch`, mark as `⚠️ AUTO-FIXED`
+- ❌ Non-Sensitive Mismatch → record `{ field, expected, actual }` and **auto-fix** via `gateway config.patch`, mark as `⚠️ AUTO-FIXED`.
+- ❌ Sensitive Mismatch (e.g., inside `auth_profiles`) → record only `[REDACTED_SENSITIVE_MISMATCH]` and DO NOT auto-fix. Mark as `❌ FAIL (Needs Human)`.
 
-## Phase 2: API Key & Provider Liveness
+## Phase 2: LLM Provider Liveness
 
-**Test LLM providers through OpenClaw's routing layer:**
+**Test LLM providers through OpenClaw's routing layer only — no API keys, no curl, no env vars.**
 
 For each LLM provider in your registered models, spawn a minimal session:
 ```yaml
@@ -62,59 +83,13 @@ sessions_spawn:
   runTimeoutSeconds: 30
 ```
 
-**Test non-LLM providers (Brave, Notion, etc.):**
-
-Only test providers explicitly listed in your `MODEL_GROUND_TRUTH.md` under `non_llm_providers`. Each entry must declare its test endpoint AND its allowed domain. Do NOT scan environment variables or test arbitrary endpoints.
-
-```yaml
-# Example GROUND_TRUTH entry:
-non_llm_providers:
-  - name: Brave Search
-    allowed_domain: "api.search.brave.com"
-    test_endpoint: "https://api.search.brave.com/res/v1/web/search?q=test&count=1"
-    env_var: BRAVE_API_KEY
-    auth_header: "X-Subscription-Token"
-  - name: Notion
-    allowed_domain: "api.notion.com"
-    test_endpoint: "https://api.notion.com/v1/users/me"
-    env_var: NOTION_TOKEN
-    auth_header: "Authorization: Bearer"
-```
-
-**Endpoint validation (MANDATORY before every curl):**
-1. Parse the hostname from `test_endpoint`
-2. Verify it matches `allowed_domain` exactly (no subdomain wildcards)
-3. Verify the scheme is `https://` (never `http://`)
-4. If validation fails → skip this provider, report ❌ ENDPOINT_REJECTED
-
-```bash
-# Validation pseudocode — agent MUST perform this check:
-ENDPOINT_HOST=$(python3 -c "from urllib.parse import urlparse; print(urlparse('$TEST_ENDPOINT').hostname)")
-if [ "$ENDPOINT_HOST" != "$ALLOWED_DOMAIN" ]; then
-  echo "❌ ENDPOINT_REJECTED: $ENDPOINT_HOST does not match allowed_domain $ALLOWED_DOMAIN"
-  # DO NOT send the curl request
-fi
-```
-
-For each validated provider:
-```bash
-curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 -m 15 \
-  -H "<auth_header>: <value of env_var>" "<test_endpoint>"
-```
-
-**Scope restrictions:**
-- Only env vars explicitly named in `non_llm_providers[].env_var` may be accessed — never enumerate or dump environment variables
-- Only HTTPS endpoints whose hostname matches `allowed_domain` receive credentials
-- Credentials are sent as headers only — never in URL query params or POST body
-- If GROUND_TRUTH has no `non_llm_providers` section, skip Phase 2 non-LLM checks entirely
-
 Judgment:
-- Response received / HTTP 200 → ✅
-- Auth error (401/403) → ❌ KEY_INVALID
-- Rate limited (429) → ⚠️ RATE_LIMITED (not a key issue)
-- Timeout → ❌ UNREACHABLE
+- Received "KEY_OK" → ✅
+- Timeout or error → ❌ PROVIDER_DOWN (e.g., 401/403)
 
-**Do NOT auto-fix** — key issues need human intervention.
+**Do NOT auto-fix** — provider issues need human intervention.
+
+**Note:** Non-LLM provider checks (Brave, Notion, etc.) are intentionally excluded. API key validation requires functional testing (like this phase), never literal key comparison.
 
 ## Phase 3: Cron Integrity
 
@@ -170,7 +145,7 @@ sessions_spawn:
 
 ## Summary Report
 
-Send to your ops channel:
+Send to your ops channel. **Enforce the Redaction Protocol here.**
 
 ```
 🔍 **Post-Upgrade Verification Report**
@@ -178,10 +153,11 @@ Send to your ops channel:
 ⏱️ YYYY-MM-DD HH:MM TZ
 
 **Phase 1: Config Integrity** [✅/⚠️/❌] X/Y checks
-  [list any drift + fix status]
+  [list any non-sensitive drift + fix status]
+  [if sensitive drift found, list as: field (REDACTED_MISMATCH)]
 
 **Phase 2: Provider Liveness** [✅/❌] X/Y providers
-  [per-provider status]
+  [per-provider status: ✅ / ❌ ERROR_CODE]
 
 **Phase 3: Cron Integrity** [✅/⚠️/❌] X/Y recurring jobs
   [list any drift + fix status]
@@ -196,11 +172,13 @@ Send to your ops channel:
 
 If any ❌ FAIL → append: `🚨 Human intervention required`
 
-Also write results to `memory/YYYY-MM-DD.md`.
+Also write results to `memory/YYYY-MM-DD.md`. **No secrets allowed.**
 
 ## Rules
 
 - Each Phase is independent — one failure does not block the next
-- Auto-fix: Phase 1 (config) + Phase 3 (cron) only
-- Report-only: Phase 2 (keys) + Phase 5 (channels)
-- All curl commands use `--connect-timeout 10 -m 15`
+- Auto-fix: Phase 1 (non-sensitive config) + Phase 3 (cron) only
+- Report-only: Phase 2 (providers) + Phase 5 (channels)
+- **NO CREDENTIAL ACCESS**: No curl, no env vars, no literal key comparison.
+- Summary report goes to your configured ops channel (internal Discord only — do not route to external webhooks)
+- Memory write goes to `memory/YYYY-MM-DD.md` (local workspace only — contains version + phase pass/fail counts, no sensitive values)

@@ -66,26 +66,6 @@ cron_jobs:
     delivery_to: "123456789"  # my-channel
 ```
 
-## Non-LLM Providers (Phase 2 Liveness)
-
-```yaml
-# Optional: declare non-LLM providers for API key liveness checks.
-# Each entry MUST specify allowed_domain — credentials are ONLY sent to matching HTTPS hosts.
-# If this section is omitted, non-LLM liveness checks are skipped.
-non_llm_providers:
-  # - name: Brave Search
-  #   allowed_domain: "api.search.brave.com"
-  #   test_endpoint: "https://api.search.brave.com/res/v1/web/search?q=test&count=1"
-  #   env_var: BRAVE_API_KEY
-  #   auth_header: "X-Subscription-Token"
-  #
-  # - name: Notion
-  #   allowed_domain: "api.notion.com"
-  #   test_endpoint: "https://api.notion.com/v1/users/me"
-  #   env_var: NOTION_TOKEN
-  #   auth_header: "Authorization: Bearer"
-```
-
 ## Verification Checklist
 
 ```yaml

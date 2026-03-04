@@ -1,25 +1,28 @@
 ---
 name: ground-control
 description: Post-upgrade verification system for OpenClaw. Defines a model/cron/channel ground truth file and a 5-phase automated verification flow (config integrity, API key liveness, cron integrity, session smoke test, channel liveness) with auto-repair for config and cron drift.
-version: "0.2.2"
+version: "0.3.5"
 metadata:
   author: JonathanJing
   tags: [ops, verification, upgrade, config, cron, health]
   license: MIT
-  credentials:
-    mode: user-declared
-    source: MODEL_GROUND_TRUTH.md → non_llm_providers[].env_var
-    note: >
-      This skill reads env vars that the USER declares in their MODEL_GROUND_TRUTH.md file.
-      The set of env vars is not known at publish time — it depends on which providers
-      the user configures. Common examples: BRAVE_API_KEY, NOTION_TOKEN.
-      Credentials are only sent to HTTPS endpoints whose hostname exactly matches
-      the user-declared allowed_domain. See SKILL.md Permissions section for full policy.
+  credentials: none
 ---
 
 # ground-control
 
 Post-upgrade verification for OpenClaw. Keeps your system honest after every upgrade.
+
+## 🛠️ Installation
+
+### 1. Ask OpenClaw (Recommended)
+Tell OpenClaw: *"Install the ground-control skill."* The agent will handle the installation and configuration automatically.
+
+### 2. Manual Installation (CLI)
+If you prefer the terminal, run:
+```bash
+clawhub install ground-control
+```
 
 ## Permissions & Privileges
 
@@ -32,12 +35,13 @@ This skill requires the following OpenClaw capabilities:
 
 **Auto-fix behavior:** Phases 1 and 3 will automatically patch config/cron to match GROUND_TRUTH. Use `--dry-run` to disable auto-fix and get a report-only run.
 
-**Environment variables:** Phase 2 tests non-LLM provider keys (e.g., Brave, Notion). Security model:
-- Only env vars explicitly named in `MODEL_GROUND_TRUTH.md` → `non_llm_providers[].env_var` are read
-- Credentials are ONLY sent to HTTPS endpoints whose hostname exactly matches the entry's `allowed_domain`
-- Endpoint validation is mandatory before every curl — hostname mismatch = skip + report ❌
-- The skill never enumerates, dumps, or logs environment variable values
-- If no `non_llm_providers` section exists in GROUND_TRUTH, non-LLM checks are skipped entirely
+**Security & Redaction:** This skill enforces a Zero-Secret Logging protocol.
+- **Immediate Redaction**: Sensitive nodes (`auth`, `plugins`) are stripped from memory after fetching runtime config.
+- **Redacted Drift**: Mismatches in sensitive fields are reported as `[REDACTED_SENSITIVE_MISMATCH]`.
+- **Functional Validation**: API keys are tested through functional calls (Phase 2), never through literal comparison.
+- **No Persistence**: Literal credentials are never written to `memory/` files or messaging channels.
+
+**Environment variables:** None.
 
 ## When to use
 

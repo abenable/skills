@@ -2,6 +2,17 @@
 
 > Post-upgrade verification for OpenClaw. Your system's pre-flight checklist.
 
+## 🛠️ Installation
+
+### 1. Ask OpenClaw (Recommended)
+Tell OpenClaw: *"Install the ground-control skill."* The agent will handle the installation and configuration automatically.
+
+### 2. Manual Installation (CLI)
+If you prefer the terminal, run:
+```bash
+clawhub install ground-control
+```
+
 ## The Problem
 
 OpenClaw upgrades can silently change your configuration. A new version might reset your primary model, alter cron job schemas, or break channel routing. You won't notice until something stops working.
@@ -57,8 +68,8 @@ OpenClaw upgrades can silently change your configuration. A new version might re
 ### Phase 1: Config Integrity
 Compares `gateway config.get` output against GROUND_TRUTH. Checks primary model, registered models, compaction mode, context pruning, heartbeat interval, ACP config, and channel policies. **Auto-fixes drift** via `gateway config.patch`.
 
-### Phase 2: API Key & Provider Liveness
-Tests each LLM provider by spawning a minimal `sessions_spawn` request through OpenClaw's own routing layer — not by manually curling APIs. Non-LLM providers (Brave, Notion, etc.) are tested via env-injected curl. **Reports only** — key issues need human intervention.
+### Phase 2: LLM Provider Liveness
+Tests each LLM provider by spawning a minimal `sessions_spawn` request through OpenClaw's own routing layer. No API keys are read, no curl commands are executed, no env vars are accessed. **Reports only** — provider issues need human intervention.
 
 ### Phase 3: Cron Integrity
 Compares `cron list` against GROUND_TRUTH's recurring job definitions. Checks model, schedule, delivery target, and enabled status. **Auto-fixes drift** via `cron update`. Ignores one-shot (`deleteAfterRun`) jobs. Enforces the "no Opus in cron" rule.
@@ -147,21 +158,9 @@ ground-control/
 
 ## Security Model
 
-### Credential Handling
+### No Credential Access
 
-Phase 2 can test non-LLM provider API keys (Brave, Notion, etc.). The credential flow has these guardrails:
-
-| Layer | Control |
-|-------|---------|
-| **Declaration** | Only env vars named in YOUR `MODEL_GROUND_TRUTH.md` → `non_llm_providers[].env_var` are read. No enumeration, no scanning. |
-| **Endpoint validation** | Each provider entry requires an `allowed_domain`. Before every curl, the hostname is extracted and compared exactly. Mismatch = skip + report ❌. |
-| **Transport** | HTTPS only. Credentials sent as headers only — never in URL params or POST body. |
-| **Logging** | Env var values are never logged, written to memory, or included in reports. Only status codes are reported. |
-| **Opt-in** | If your GROUND_TRUTH has no `non_llm_providers` section, these checks are skipped entirely. |
-
-### Why env vars aren't declared in registry metadata
-
-The set of API keys depends on which non-LLM providers *you* use — it varies per installation. This is analogous to Terraform declaring `variable` blocks at plan time rather than in the provider registry. The skill's metadata declares `credentials.mode: user-declared` to make this pattern explicit.
+This skill does **not** read API keys, environment variables, or any secrets. Phase 2 tests LLM providers exclusively through OpenClaw's `sessions_spawn` — the routing layer handles authentication internally. Non-LLM provider checks (Brave, Notion, etc.) are intentionally out of scope.
 
 ### Auto-fix Scope
 

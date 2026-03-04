@@ -1,0 +1,11 @@
+{
+  "owner": "likesjx",
+  "slug": "meshops-control-plane",
+  "displayName": "MeshOps Control Plane",
+  "latest": {
+    "version": "0.1.7",
+    "publishedAt": 1772661158454,
+    "commit": null
+  },
+  "history": []
+}

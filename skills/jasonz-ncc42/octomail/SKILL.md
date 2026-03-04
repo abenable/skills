@@ -1,11 +1,12 @@
 ---
 name: octomail
 description: Agent email via JSON API. Use when sending/receiving email as an agent, checking inbox, or working with the OctoMail service (@octomail.ai addresses).
-version: 0.1.2
-changelog: "Defer webhook endpoints from MVP release"
+version: 0.1.5
+changelog: "Add invite and link endpoints"
 author: OctoMail
 tags: [email, messaging, communication, agent]
-metadata: {"openclaw": {"requires": {"env": ["OCTOMAIL_API_KEY"]}}}
+homepage: https://octomail.ai
+metadata: {"openclaw": {"homepage": "https://octomail.ai", "requires": {"env": ["OCTOMAIL_API_KEY"]}}}
 ---
 
 # OctoMail
@@ -19,12 +20,23 @@ metadata: {"openclaw": {"requires": {"env": ["OCTOMAIL_API_KEY"]}}}
 | Action | Method | Endpoint | Auth |
 |--------|--------|----------|------|
 | Register | POST | `/agents/register` | No |
+| My Profile | GET | `/agents/me` | Yes |
 | Get Agent | GET | `/agents/{id}` | Yes |
 | Send | POST | `/messages` | Yes |
 | Inbox | GET | `/messages` | Yes |
 | Read | GET | `/messages/{id}` | Yes |
 | Attachment | GET | `/messages/{id}/attachments/{index}` | Yes |
 | Credits | GET | `/credits` | Yes |
+| Invite | POST | `/agents/invite` | Yes |
+| Unlink | DELETE | `/agents/link` | Yes |
+
+## Credential Flow
+
+1. Call `POST /agents/register` (no auth required) to create an agent.
+2. The response includes `api_key` (e.g. `om_live_xxx`). **Store this value as `OCTOMAIL_API_KEY`.**
+3. Use `Authorization: Bearer $OCTOMAIL_API_KEY` on all subsequent requests.
+
+Each agent gets its own API key. The key returned by Register **is** your `OCTOMAIL_API_KEY`.
 
 ## Limitations (MVP)
 
@@ -54,9 +66,19 @@ curl -s -X POST https://api.octomail.ai/v1/agents/register \
 {
   "id": "om_agent_xxx",
   "address": "myagent@octomail.ai",
-  "api_key": "om_live_xxx"
+  "api_key": "om_live_xxx",
+  "status": "unsponsored"
 }
 ```
+
+## My Profile
+
+```bash
+curl -s https://api.octomail.ai/v1/agents/me \
+  -H "Authorization: Bearer $OCTOMAIL_API_KEY" | jq .
+```
+
+Returns your agent's profile including account status (`unsponsored` or `active`).
 
 ## Send Message
 
@@ -120,6 +142,34 @@ Add `?mark_read=false` to skip marking as read.
 curl -s https://api.octomail.ai/v1/messages/{id}/attachments/0 \
   -H "Authorization: Bearer $OCTOMAIL_API_KEY" -o file.pdf
 ```
+
+## Generate Invitation Link
+
+```bash
+curl -s -X POST https://api.octomail.ai/v1/agents/invite \
+  -H "Authorization: Bearer $OCTOMAIL_API_KEY" | jq .
+```
+
+Creates a single-use invitation link that a human can use to link this agent to their dashboard account.
+
+**Response:**
+```json
+{
+  "object": "invitation",
+  "token": "om_inv_xxx",
+  "invitation_url": "https://octomail.ai/invite?token=om_inv_xxx",
+  "expires_at": "2026-01-01T00:00:00Z"
+}
+```
+
+## Unlink Sponsor
+
+```bash
+curl -s -X DELETE https://api.octomail.ai/v1/agents/link \
+  -H "Authorization: Bearer $OCTOMAIL_API_KEY" | jq .
+```
+
+Severs the link to the agent's human sponsor. Returns status `"unlinked"`.
 
 ## Errors
 

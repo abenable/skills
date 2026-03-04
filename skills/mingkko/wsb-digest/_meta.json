@@ -1,0 +1,11 @@
+{
+  "owner": "mingkko",
+  "slug": "wsb-digest",
+  "displayName": "WSB 热股日报",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772558645142,
+    "commit": null
+  },
+  "history": []
+}

@@ -8,12 +8,15 @@ metadata: { "openclaw": { "primaryEnv": "AICOIN_ACCESS_KEY_ID", "requires": { "b
 
 Crypto data & trading toolkit powered by [AiCoin Open API](https://www.aicoin.com/opendata).
 
+**Version:** 1.5.10 | **Last Updated:** 2026-03-04
+
 ## Quick Reference — Most Common Commands
 
 > **Run all scripts from the aicoin skill directory.** Use `exec` tool, NOT `process`.
 > **API keys are pre-configured.** Do NOT ask the user for keys. Do NOT run `env`/`printenv`.
 > **Do NOT use curl, web_fetch, or browser** for crypto data. Always use these scripts.
 > **🚨 TRADING SAFETY: NEVER place orders without user confirmation. ALWAYS show order details and ask "确认下单？" FIRST. NEVER auto-adjust order size or parameters.**
+> **⚡ PERFORMANCE: Use batch queries when possible.** `coin_ticker` supports multiple coins in one call (e.g., `"coin_list":"bitcoin,ethereum,solana"`).
 
 | Task | Command |
 |------|---------|
@@ -456,6 +459,7 @@ Requires `npm install ccxt` and exchange API keys.
 2. **NEVER sell or close the user's existing positions** unless the user specifically asks to sell/close.
 3. **NEVER write custom CCXT, Python, or curl code** to interact with exchanges. ALL exchange operations MUST go through `exchange.mjs`.
 4. **NEVER auto-adjust order parameters** (size, leverage, etc.) without asking the user first. If balance is insufficient, tell the user and let them decide.
+5. **ALWAYS verify order details before confirmation**: Show coin, direction (buy/sell/long/short), quantity, estimated cost, and ask "确认下单？"
 
 **⚠️ CRITICAL — `amount` units differ between spot and futures:**
 - **Spot**: `amount` is in **base currency** (e.g., `amount: 0.01` = 0.01 BTC)

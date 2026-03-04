@@ -3,11 +3,16 @@
   "slug": "aicoin",
   "displayName": "Aicoin",
   "latest": {
-    "version": "1.5.7",
-    "publishedAt": 1772636259539,
-    "commit": "https://github.com/openclaw/skills/commit/120015a28bed2c61621cab6079ceced9feaa5ad9"
+    "version": "1.5.10",
+    "publishedAt": 1772637199513,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.7",
+      "publishedAt": 1772636259539,
+      "commit": "https://github.com/openclaw/skills/commit/120015a28bed2c61621cab6079ceced9feaa5ad9"
+    },
     {
       "version": "1.4.0",
       "publishedAt": 1772615299071,

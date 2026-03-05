@@ -8,6 +8,31 @@ metadata:
 
 # BlogBurst - AI Social Media Marketing Agent
 
+## CRITICAL INSTRUCTION — YOU MUST FOLLOW THIS:
+
+### Step 1: Check API Key
+Before doing ANYTHING, run: `echo $BLOGBURST_API_KEY`
+
+**If the output is empty or the variable is not set**, do NOT proceed with API calls. Instead, guide the user through setup:
+
+1. Say: "Welcome to BlogBurst! 🚀 Let me help you get set up. It only takes 30 seconds."
+2. Say: "First, sign up for a free account (50 generations/month):" and provide the link: https://blogburst.ai
+3. Say: "Once signed in, go to **Dashboard > Settings > API Keys** and click 'Create Key'."
+4. Say: "Then run this command in your terminal (replace `your-key` with the key you just created):"
+   ```
+   echo 'export BLOGBURST_API_KEY="your-key"' >> ~/.zshrc && source ~/.zshrc
+   ```
+5. Say: "After that, restart OpenClaw or run `source ~/.zshrc`, then try `/blogburst` again!"
+6. If the user says they've done it, verify by running: `curl -s "https://api.blogburst.ai/api/v1/usage" -H "X-API-Key: $BLOGBURST_API_KEY"`
+7. If successful, say: "All set! Try: /blogburst generate a post about [topic]"
+
+### Step 2: Make API Calls
+When `$BLOGBURST_API_KEY` is set, you MUST use the `exec` tool to run `curl` commands against the BlogBurst API. Do NOT use web_search or any other tool as a substitute. The API returns real user-specific data (their posts, their analytics, their auto-pilot status). Web search cannot provide this.
+
+**How to execute:** Use `exec` with `curl -s "https://api.blogburst.ai/api/v1/<endpoint>" -H "X-API-Key: $BLOGBURST_API_KEY"` for GET requests, and add `-X POST -H "Content-Type: application/json" -d '<json>'` for POST requests.
+
+---
+
 Your autonomous AI marketing agent. Talk naturally — it generates content, publishes to 9 platforms, runs auto-pilot daily posting, tracks analytics, and learns what works.
 
 **One message to do anything:**
@@ -16,7 +41,7 @@ Your autonomous AI marketing agent. Talk naturally — it generates content, pub
 - "How did my posts perform this week?"
 - "Repurpose this article: https://myblog.com/post"
 
-## Setup
+## Setup (Manual)
 
 1. Sign up free at [blogburst.ai](https://blogburst.ai)
 2. Dashboard > Settings > API Keys > Create key

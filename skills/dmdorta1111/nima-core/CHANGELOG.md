@@ -5,6 +5,23 @@ All notable changes to NIMA Core will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-03-04
+
+### Added
+- **`storage/` module** — New cognitive memory primitives:
+  - `storage/temporal_decay.py` — ACT-R base-level activation scorer. Tracks per-memory access history and computes decay-weighted activation scores using formula `B_i = ln(Σ t_j^(−d))`. Enables time-aware memory retrieval (recently-accessed memories rank higher).
+  - `storage/hebbian_updater.py` — Hebbian edge-weight manager for the memory graph. Strengthens associations between co-activated memories ("neurons that fire together, wire together") and decays unused edges. Integrates with `lazy_recall.py` for graph-augmented re-ranking.
+  - `storage/__init__.py` — Clean module exports for both classes.
+- `lazy_recall.py` now fully activates ACT-R temporal decay and Hebbian boost (both previously imported but had no backing module).
+
+### Security
+- All SQL uses parameterised `?` placeholders throughout `storage/` — no user-controlled data is ever interpolated into SQL text.
+- `node_id` validated as non-empty string before any DB operation in `temporal_decay.py`.
+- Integer type enforcement for node IDs in `hebbian_updater.py` (graph node IDs are always SQLite row integers).
+
+### Changed
+- Default database paths now use `NIMA_HOME` env var (default `~/.nima`) for portability across bots and installations. Previously pointed to `lilu_core/storage/data/` (Lilu-specific).
+
 ## [3.1.0] - 2026-02-26
 
 ### Fixed

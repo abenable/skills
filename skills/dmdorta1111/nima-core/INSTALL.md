@@ -130,18 +130,41 @@ Done. Your bot now has persistent memory.
 | Graph Queries | SQL JOINs | **Native Cypher** |
 | DB Size | ~91 MB | **~50 MB** (44% smaller) |
 
-**How to migrate:**
+**How to install:**
 
 ```bash
 # Install LadybugDB backend
 pip install real-ladybug
 
-# Run installer with LadybugDB
+# Run installer with LadybugDB (installs plugin + creates SQLite schema)
 ./install.sh --with-ladybug
 
-# Or manually migrate
-python -c "from nima_core.storage import migrate; migrate()"
+# Initialize the LadybugDB graph schema (run once, idempotent)
+python scripts/init_ladybug.py
+
+# For existing v3.1.x installs: run the schema migration
+python scripts/migrate_to_3_2_0.py
 ```
+
+**LadybugDB Schema (v3.2.0)**
+
+The complete graph schema includes:
+
+| Node type | Description |
+|-----------|-------------|
+| `MemoryNode` | Primary memory — text, embedding (FLOAT[512]), affect, hive metadata |
+| `Turn` | Conversation turn structure |
+| `DreamNode` | Nightly dream consolidation narratives |
+| `InsightNode` | Extracted insights from dream runs |
+| `PatternNode` | Recurring cross-memory patterns |
+
+| Relationship | Connects |
+|-------------|---------|
+| `relates_to` | MemoryNode ↔ MemoryNode (with `relation` + `weight`) |
+| `has_input / has_contemplation / has_output` | Turn → MemoryNode |
+| `derived_from` | InsightNode/DreamNode → source MemoryNodes |
+
+Run `python scripts/init_ladybug.py --dry-run` to preview the full schema.
 
 **⚠️ CRITICAL: LOAD VECTOR Requirement**
 

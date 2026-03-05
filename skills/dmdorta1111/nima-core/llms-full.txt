@@ -515,11 +515,13 @@ CREATE TABLE nima_lucid_moments (
 ### LadybugDB Schema (Optional)
 
 **Node Types:**
-- `MemoryNode` — 24 fields (same as SQLite + additional metadata)
+- `MemoryNode` — 28 fields including `text, summary, who, layer, importance, strength, decay_rate, is_ghost, affect_json, fe_score, **embedding FLOAT[512]**, themes, emotions, model, source_agent, memory_type` — embeddings ARE stored in LadybugDB, same as SQLite
 - `Turn` — Links input/contemplation/output nodes
 - `InsightNode` — Dream consolidation insights
 - `PatternNode` — Detected patterns
 - `DreamNode` — Dream run records
+
+> **Note on embeddings:** Both SQLite (`embedding BLOB`) and LadybugDB (`embedding FLOAT[512]`) store vector embeddings. They are written to both on capture when `VOYAGE_API_KEY` is set. SQLite uses 512×float32 packed as BLOB; LadybugDB uses native `FLOAT[512]` type requiring `LOAD VECTOR` before mutations.
 
 **Edge Types:**
 - `relates_to` — General relationship

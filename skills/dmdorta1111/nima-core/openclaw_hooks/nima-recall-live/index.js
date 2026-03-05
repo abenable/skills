@@ -722,6 +722,78 @@ export default function nimaRecallLivePlugin(api, config) {
       return undefined;
     }
   }, { priority: 15 }); // After nima-affect (priority 10)
+
+  // ─── Push Trigger: Proactive Memory Surfacing ──────────────────────────────
+  // Surfaces memories proactively when semantic similarity is high enough,
+  // even when the user hasn't asked for them. Runs AFTER recall (priority 16)
+  // so it can read from ctx.recentRecalls set by the recall hook above.
+
+  api.on("before_agent_start", async (event, ctx) => {
+    try {
+      const pushCfg = config?.push_triggers || {};
+      if (pushCfg.enabled === false) return;
+
+      const threshold   = typeof pushCfg.threshold    === 'number' ? pushCfg.threshold    : 0.72;
+      const maxSurfaces = typeof pushCfg.max_surfaces === 'number' ? pushCfg.max_surfaces : 2;
+      const minAgeMs    = (typeof pushCfg.min_age_hours === 'number' ? pushCfg.min_age_hours : 1) * 60 * 60 * 1000;
+
+      // Skip subagents and heartbeats
+      if (ctx.sessionKey?.includes(":subagent:")) return;
+      if (ctx.sessionKey?.includes("heartbeat")) return;
+
+      const userMessage = extractUserMessage(event.prompt);
+      if (!userMessage || userMessage.length < 20) return;
+
+      // Use the same quickRecall pipeline — get raw memories with scores
+      const result = await quickRecall(userMessage);
+      const memories = Array.isArray(result) ? result : (result?.memories || []);
+      if (!memories.length) return;
+
+      const now = Date.now();
+      const surfaces = [];
+
+      for (const mem of memories) {
+        if (surfaces.length >= maxSurfaces) break;
+
+        // fe_score (free energy / embedding similarity) is our best proxy
+        const feScore   = typeof mem.fe_score   === 'number' ? mem.fe_score   : 0;
+        // Use 0 fallback (not feScore) to avoid double-counting when similarity is missing
+        const similarity = typeof mem.similarity === 'number' ? mem.similarity : 0;
+        const surfaceScore = (similarity + feScore) / 2;
+
+        if (surfaceScore < threshold) continue;
+
+        // Age check — only surface memories older than minAgeMs
+        const memTs = mem.timestamp ? new Date(mem.timestamp).getTime() : 0;
+        if (memTs && (now - memTs) < minAgeMs) continue;
+
+        // Format age
+        const ageMs = memTs ? now - memTs : 0;
+        const ageDays = Math.floor(ageMs / 86400000);
+        const ageHours = Math.floor((ageMs % 86400000) / 3600000);
+        const ageStr = ageDays > 0 ? `${ageDays}d ago` : `${ageHours}h ago`;
+
+        const summary = (mem.content || mem.text || mem.summary || '').substring(0, 150).trim();
+        if (summary) {
+          surfaces.push(`[NIMA SURFACE — ${ageStr}] ${summary}`);
+        }
+      }
+
+      if (surfaces.length > 0) {
+        const surfaceBlock = surfaces.join("\n");
+        log.info?.(`[nima-recall-live] Push-surfaced ${surfaces.length} memory/memories`);
+        // Append to existing prependContext if present, otherwise set it
+        const existing = ctx.prependContext || '';
+        const newContext = existing
+          ? `${existing}\n\n${surfaceBlock}`
+          : surfaceBlock;
+        return { prependContext: newContext };
+      }
+    } catch (err) {
+      // Silent fail — never break the agent turn
+      console.error(`[nima-recall-live] push-trigger error (non-fatal): ${err.message}`);
+    }
+  }, { priority: 16 }); // Runs right after recall hook (priority 15)
   
   // Register before_compaction handler for memory flush
   api.on("before_compaction", async (event, ctx) => {

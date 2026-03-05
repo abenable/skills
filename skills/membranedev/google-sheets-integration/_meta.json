@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "google-sheets-integration",
+  "displayName": "Google Sheets",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772607694142,
+    "commit": null
+  },
+  "history": []
+}

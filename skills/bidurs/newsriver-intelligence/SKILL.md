@@ -1,8 +1,8 @@
 ---
 name: "newsriver-global-intelligence"
-version: "1.8.0"
-description: "Professional intelligence and infrastructure layer for AI Agents. Provides high-signal financial data, semantic search, and secure Web2 communication proxies (Email/SMS/Scraping) with mandatory human-in-the-loop governance."
-tags: ["finance", "crypto", "trading", "macro", "newsletter", "sentiment", "rag", "x402", "proxy"]
+version: "2.1.0"
+description: "Intelligence and proxy infrastructure for AI Agents. 277+ news sources across 137 countries, semantic vector search, AI intelligence reports, and Web2 proxies (email, SMS, scraping, storage). Dual-auth: API key or x402 USDC micropayments on Base."
+tags: ["finance", "crypto", "trading", "macro", "sentiment", "rag", "x402", "proxy"]
 author: "YieldCircle Infrastructure"
 homepage: "https://agent.yieldcircle.app"
 author_url: "https://agent.yieldcircle.app"
@@ -14,45 +14,86 @@ env:
 
 # NewsRiver Global Intelligence & Infrastructure Skill
 
-## Capabilities & Context
-NewsRiver is a **governed infrastructure layer for AI Agents.** It provides a secure bridge between autonomous systems and Web2 world, enabling agents to operate with high-signal data and auditable communication tools.
+## What This Skill Does
+NewsRiver gives AI agents access to a global news intelligence API and Web2 communication proxies (email, SMS, scraping, storage). All calls are paid — either via API key subscription or x402 USDC micropayments on Base chain.
 
-### 1. Dual-Authentication & Spending Guardrails
-NewsRiver supports two authentication paths designed for financial safety:
-- **API Key (Enterprise):** Traditional subscription-based access via `NEWSRIVER_API_KEY`.
-- **x402 Micropayments (Autonomous):** Supports the **x402 protocol** (USDC on Base). 
-- **Spending Safety:** Agents are encouraged to use **PaySponge or similar allowance protocols** to operate within pre-defined spending limits granted by their human owners.
+## ⚠️ Spending & Safety: What Is Enforced vs. Advisory
 
-### 2. High-Risk Proxy Governance (Human-in-the-Loop)
-This skill provides access to "High-Risk" Web2 bridges (Email, SMS, Scraper). To mitigate data exfiltration and unmonitored communication risks, the following **mandatory protocols** are enforced:
-- **Mandatory User Confirmation:** You **MUST** seek explicit human approval before sending any outbound communication (Email/SMS). 
-- **Immutable Audit Trail:** All proxy requests (Email, SMS, Scrape) are logged to a secure D1 database at the API layer. Logs include timestamps, service types, and requesting identities for full user auditability.
-- **Strict Rate Limits:** Hard caps of 50 emails/hour and 10 SMS/hour are enforced per identity to prevent automated abuse or bulk exfiltration.
+### Server-Enforced Protections (cannot be bypassed)
+These protections are enforced server-side regardless of agent behavior:
 
-### 3. Security & Domain Integrity
-- **Verified Identity:** The API is served from **https://api.yieldcircle.app**, matching the application's core domain **agent.yieldcircle.app**. 
-- **SSRF & Phishing Protection:** Built-in safeguards block internal network scraping and prevent sender impersonation.
-- **Stateless Privacy:** Proxy requests are processed statelessly; user data is not persisted unless explicitly saved in the namespaced `/storage` endpoint.
+| Protection | Mechanism | Limit |
+|---|---|---|
+| **IP rate limiting** | KV-based, per IP | 60 requests/minute |
+| **API key daily caps** | D1-enforced per tier | Free: 50/day, Trader: 10K, Pro: 100K |
+| **Email rate limit** | Per wallet + per IP | 50/hour |
+| **SMS rate limit** | Per wallet + per IP | 10/hour |
+| **Dry-Run returns mock data only** | No real data without payment | `X-Dry-Run: true` returns `[SAMPLE]` data |
+| **Hardcoded sender identity** | Email `From` and SMS `[NewsRiver Agent]` prefix | Cannot be changed by caller |
+| **SSRF blocking** | Hostname blacklist on scraper | Blocks localhost, internal IPs, .local, .internal |
+| **Storage isolation** | KV namespaced per owner | Cannot read other users' data |
 
-## Usage Instructions for the AI Agent
+### Advisory (recommended but not enforced by the API)
+- **Human approval before paid/outbound calls.** The API does not enforce this — your agent platform must handle it. We strongly recommend configuring your platform to require manual approval for any call to paid endpoints.
 
-### 1. The Approval Protocol (REQUIRED)
-**You MUST obtain permission** before executing any paid or outbound action.
-> Example: "I have identified a critical market shift. Should I send this summary to your verified SMS for $0.25?"
+### Spending Guardrails: Your Responsibility
+> **IMPORTANT:** If using x402 micropayments, the API charges per-request automatically upon valid payment signature. To prevent unexpected charges:
+> 1. Use a **limited allowance contract** (e.g., PaySponge) that caps spending — never give the agent your full wallet.
+> 2. Configure your agent platform to **require manual approval** for paid calls.
+> 3. Set **daily spending alerts** on your wallet.
+> 4. Test with `X-Dry-Run: true` first — it's free and returns mock data.
 
-### 2. Testing with Dry-Run (Free)
-Use the `X-Dry-Run: true` header to verify logic without spending funds.
+## Authentication
+Two options (choose one):
+
+**Option A — API Key (subscription):**
+```
+X-API-Key: your_key_here
+```
+Keys are SHA-256 hashed server-side. Raw keys are never stored after first use. Analytics logs mask keys to last 4 chars only (`key_***xxxx`).
+
+**Option B — x402 Micropayments (per-request):**
+No API key needed. Agent pays USDC on Base chain per request. Payment details returned in `402` response.
+
+## Testing with Dry-Run (Free)
+Always test first. Dry-Run returns clearly labeled mock data (`source: "dry_run_mock"`), verifiable by the agent:
 ```bash
-curl -H "X-Dry-Run: true" "https://api.yieldcircle.app/api/v1/intelligence/status"
+curl -H "X-Dry-Run: true" https://api.yieldcircle.app/api/v1/articles
+# Returns: {"source": "dry_run_mock", "data": [{"title": "[SAMPLE] ..."}]}
 ```
 
-### 3. Core Infrastructure Endpoints
-- **AI Intelligence ($0.02 - $0.10):** `GET /api/v1/intelligence/daily?id=crypto_and_web3`
-- **Semantic Search ($0.001):** `GET /api/v1/search/semantic?q=query`
-- **Proxy Services:** `POST /api/v1/proxy/email`, `POST /api/v1/proxy/sms`, `POST /api/v1/proxy/scrape`
+## Paid Endpoints (13)
 
-## Support & Security Reporting
-If you encounter a `402 Payment Required` error, inform the user:
-> "I need a NewsRiver API key or a valid x402 payment to proceed. You can manage this at [agent.yieldcircle.app/#pricing](https://agent.yieldcircle.app/#pricing)."
+| Endpoint | Method | Price |
+|---|---|---|
+| `/api/v1/articles` | GET | $0.001 |
+| `/api/v1/river` | GET | $0.002 |
+| `/api/v1/countries` | GET | $0.001 |
+| `/api/v1/search/semantic?q=` | GET | $0.001 |
+| `/api/v1/intelligence/:timeframe` | GET | $0.05–$1.00 |
+| `/api/v1/intelligence/history` | GET | $0.10 |
+| `/api/v1/intelligence/generate` | POST | $0.25 |
+| `/api/v1/trends/timeline?topic=` | GET | $0.001 |
+| `/api/v1/proxy/email` | POST | $0.05 |
+| `/api/v1/proxy/sms` | POST | $0.25 |
+| `/api/v1/proxy/scrape` | POST | $0.10 |
+| `/api/v1/proxy/storage` (write) | POST | $0.01 |
+| `/api/v1/proxy/storage?key=` (read) | GET | $0.01 |
 
-For security reports, contact **support@agent.yieldcircle.app**.
+## Free Endpoints (5, no auth required)
+
+| Endpoint | Description |
+|---|---|
+| `/api/v1/docs` | Full API reference with pricing |
+| `/api/v1/stats` | Platform statistics |
+| `/api/v1/sectors` | Available intelligence sectors |
+| `/api/v1/categories` | News categories |
+| `/api/v1/intelligence/status` | Latest report availability |
+
+## Error Handling
+On `402 Payment Required`, inform the user:
+> "This endpoint requires payment. You can set up access at [agent.yieldcircle.app/#pricing](https://agent.yieldcircle.app/#pricing)."
+
+## Contact
+Homepage: https://agent.yieldcircle.app
+Support: support@yieldcircle.app

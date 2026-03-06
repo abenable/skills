@@ -7,14 +7,14 @@ compatibility: |-
   Requires npx (Node.js 18+) or Docker for the MCP server. Stores OAuth credentials at ~/.config/temporal-cortex/. Works with Claude Code, Claude Desktop, Cursor, Windsurf, and any MCP-compatible client.
 metadata:
   author: temporal-cortex
-  version: "0.7.3"
+  version: "0.7.8"
   mcp-server: "@temporal-cortex/cortex-mcp"
   homepage: "https://temporal-cortex.com"
   repository: "https://github.com/temporal-cortex/skills"
   openclaw:
     install:
       - kind: node
-        package: "@temporal-cortex/cortex-mcp@0.7.3"
+        package: "@temporal-cortex/cortex-mcp@0.7.8"
         bins: [cortex-mcp]
     requires:
       bins:
@@ -26,7 +26,14 @@ metadata:
 
 # Calendar Scheduling & Booking
 
-8 tools for calendar discovery, event querying, free slot finding, availability checking, RRULE expansion, and atomic booking. 7 read-only tools + 1 write tool (`book_slot`).
+11 tools (Layers 0, 2–4) for calendar discovery, event querying, free slot finding, availability checking, RRULE expansion, atomic booking, and Open Scheduling. 9 read-only tools + 2 write tools (`book_slot`, `request_booking`).
+
+## Source & Provenance
+
+- **Homepage:** [temporal-cortex.com](https://temporal-cortex.com)
+- **Source code:** [github.com/temporal-cortex/mcp](https://github.com/temporal-cortex/mcp) (open-source Rust)
+- **npm package:** [@temporal-cortex/cortex-mcp](https://www.npmjs.com/package/@temporal-cortex/cortex-mcp)
+- **Skills repo:** [github.com/temporal-cortex/skills](https://github.com/temporal-cortex/skills)
 
 ## Runtime
 
@@ -34,7 +41,7 @@ These tools run inside the [Temporal Cortex MCP server](https://github.com/tempo
 
 **Install and startup lifecycle:**
 1. `npx` resolves `@temporal-cortex/cortex-mcp` from the npm registry (one-time, cached locally after first download)
-2. The postinstall script downloads the platform-specific binary from the [GitHub Release](https://github.com/temporal-cortex/mcp/releases/tag/mcp-v0.7.3) and verifies its SHA256 checksum against the embedded `checksums.json` — **installation halts on mismatch**
+2. The postinstall script downloads the platform-specific binary from the [GitHub Release](https://github.com/temporal-cortex/mcp/releases/tag/mcp-v0.7.8) and verifies its SHA256 checksum against the embedded `checksums.json` — **installation halts on mismatch**
 3. The MCP server starts as a local process communicating over stdio (no listening ports)
 4. Calendar tools make authenticated API calls to your configured providers (Google Calendar API, Microsoft Graph API, CalDAV endpoints)
 
@@ -46,14 +53,14 @@ These tools run inside the [Temporal Cortex MCP server](https://github.com/tempo
 
 **Pre-run verification** (recommended before first use):
 1. Inspect the npm package without executing: `npm pack @temporal-cortex/cortex-mcp --dry-run`
-2. Verify checksums independently against the [GitHub Release](https://github.com/temporal-cortex/mcp/releases/download/mcp-v0.7.3/SHA256SUMS.txt) (see verification pipeline below)
+2. Verify checksums independently against the [GitHub Release](https://github.com/temporal-cortex/mcp/releases/download/mcp-v0.7.8/SHA256SUMS.txt) (see verification pipeline below)
 3. For full containment, run in Docker instead of npx (see Docker containment below)
 
-**Verification pipeline:** Checksums are published independently at each [GitHub Release](https://github.com/temporal-cortex/mcp/releases/tag/mcp-v0.7.3) as `SHA256SUMS.txt` — verify the binary before first use:
+**Verification pipeline:** Checksums are published independently at each [GitHub Release](https://github.com/temporal-cortex/mcp/releases/tag/mcp-v0.7.8) as `SHA256SUMS.txt` — verify the binary before first use:
 
 ```bash
 # 1. Fetch checksums from GitHub (independent of the npm package)
-curl -sL https://github.com/temporal-cortex/mcp/releases/download/mcp-v0.7.3/SHA256SUMS.txt
+curl -sL https://github.com/temporal-cortex/mcp/releases/download/mcp-v0.7.8/SHA256SUMS.txt
 
 # 2. Compare against the npm-installed binary
 shasum -a 256 "$(npm root -g)/@temporal-cortex/cortex-mcp/bin/cortex-mcp"
@@ -80,32 +87,35 @@ Build: `docker build -t cortex-mcp https://github.com/temporal-cortex/mcp.git`
 
 ## Tools
 
-### Layer 0 — Discovery
+### Layer 0 — Discovery (Platform Mode)
 
 | Tool | When to Use |
 |------|------------|
-| `list_calendars` | First call when calendars are unknown. Returns all connected calendars with provider-prefixed IDs, names, labels, primary status, and access roles. |
+| `resolve_identity` | DNS for Human Time: resolve an email, phone, or agent ID to a Temporal Cortex slug. Call before `query_public_availability`. |
 
 ### Layer 2 — Calendar Operations
 
 | Tool | When to Use |
 |------|------------|
+| `list_calendars` | First call when calendars are unknown. Returns all connected calendars with provider-prefixed IDs, names, labels, primary status, and access roles. |
 | `list_events` | List events in a time range. TOON format by default (~40% fewer tokens than JSON). Use provider-prefixed IDs for multi-calendar: `"google/primary"`, `"outlook/work"`. |
 | `find_free_slots` | Find available gaps in a calendar. Set `min_duration_minutes` for minimum slot length. |
 | `expand_rrule` | Expand recurrence rules (RFC 5545) into concrete instances. Handles DST, BYSETPOS, EXDATE, leap years. Use `dtstart` as local datetime (no timezone suffix). |
 | `check_availability` | Check if a specific time slot is free. Checks both events and active booking locks. |
 
-### Layer 3 — Cross-Calendar Availability
+### Layer 3 — Availability
 
 | Tool | When to Use |
 |------|------------|
 | `get_availability` | Merged free/busy view across multiple calendars. Pass `calendar_ids` array. Privacy: `"opaque"` (default, hides sources) or `"full"`. |
+| `query_public_availability` | Check another user's public availability by Temporal Link slug. Pass the slug and date to find their open time slots. Platform Mode only. |
 
 ### Layer 4 — Booking
 
 | Tool | When to Use |
 |------|------------|
 | `book_slot` | Book a time slot atomically. Lock → verify → write → release. **Always `check_availability` first.** |
+| `request_booking` | Book on another user's public calendar by Temporal Link slug. Requires Platform Mode. |
 
 ## Critical Rules
 
@@ -127,6 +137,16 @@ Build: `docker build -t cortex-mcp https://github.com/temporal-cortex/mcp.git`
 ```
 
 If the slot is busy at step 4, use `find_free_slots` to suggest alternatives.
+
+## Open Scheduling Workflow (Platform Mode)
+
+```
+1. Identify    →  resolve_identity("jane@example.com")  →  slug: "jane-doe"
+2. Orient      →  get_temporal_context                   (temporal-cortex-datetime)
+3. Discover    →  query_public_availability(slug, date)  →  available slots
+4. Present     →  Show top 3 options to user
+5. Book        →  request_booking(slug, start, end, title, attendee_email)
+```
 
 ## Two-Phase Commit Protocol
 
@@ -215,6 +235,15 @@ All calendar IDs use provider-prefixed format:
 | `idempotentHint` | `false` | Calling twice creates two events |
 | `openWorldHint` | `true` | Makes external API calls |
 
+## Tool Annotations (`request_booking`)
+
+| Property | Value | Meaning |
+|----------|-------|---------|
+| `readOnlyHint` | `false` | Creates calendar events on another user's calendar |
+| `destructiveHint` | `false` | Never deletes or overwrites existing events |
+| `idempotentHint` | `false` | Calling twice creates two bookings |
+| `openWorldHint` | `true` | Calls the Platform API |
+
 ## Error Handling
 
 | Error | Action |
@@ -243,8 +272,9 @@ See [Temporal Links Reference](references/TEMPORAL-LINKS.md) for detailed API do
 
 ## Additional References
 
-- [Calendar Tools Reference](references/CALENDAR-TOOLS.md) — Complete input/output schemas for all 8 tools
+- [Calendar Tools Reference](references/CALENDAR-TOOLS.md) — Complete input/output schemas for all 11 tools
 - [Multi-Calendar Guide](references/MULTI-CALENDAR.md) — Provider routing, labels, privacy modes, cross-provider operations
 - [RRULE Guide](references/RRULE-GUIDE.md) — Recurrence rule patterns, DST edge cases, 5 LLM failure modes
 - [Booking Safety](references/BOOKING-SAFETY.md) — 2PC details, concurrent booking, lock TTL, content sanitization
 - [Temporal Links](references/TEMPORAL-LINKS.md) — Open Scheduling endpoints, Agent Card integration, calendar routing
+- [Open Scheduling Guide](references/OPEN-SCHEDULING.md) — Identity resolution, public availability, external booking via MCP tools

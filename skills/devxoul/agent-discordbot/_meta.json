@@ -3,11 +3,16 @@
   "slug": "agent-discordbot",
   "displayName": "Agent Discordbot",
   "latest": {
-    "version": "1.10.3",
-    "publishedAt": 1772788587600,
-    "commit": "https://github.com/openclaw/skills/commit/dacb93833da7afde95363ce7137d987476b17d3c"
+    "version": "1.10.5",
+    "publishedAt": 1772811610651,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.10.3",
+      "publishedAt": 1772788587600,
+      "commit": "https://github.com/openclaw/skills/commit/dacb93833da7afde95363ce7137d987476b17d3c"
+    },
     {
       "version": "1.9.0",
       "publishedAt": 1772688188633,

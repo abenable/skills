@@ -3,11 +3,16 @@
   "slug": "weavmail",
   "displayName": "weavmail",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1772725255654,
-    "commit": "https://github.com/openclaw/skills/commit/e28c56c11d49fec9275c03a84339b1dd958abb95"
+    "version": "1.0.5",
+    "publishedAt": 1772727969004,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1772725255654,
+      "commit": "https://github.com/openclaw/skills/commit/e28c56c11d49fec9275c03a84339b1dd958abb95"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1772522219973,

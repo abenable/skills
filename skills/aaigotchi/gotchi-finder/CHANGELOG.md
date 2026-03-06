@@ -1,5 +1,15 @@
 # Changelog - gotchi-finder
 
+## [1.2.1] - 2026-03-05
+
+### Fixed
+- `fetch-gotchi.js` now creates output directory before writing files (prevents ENOENT on direct usage).
+- Added `equippedWearables` and `wearablesModifier` to JSON output for accurate wearable counts and display tooling.
+- Improved shell script robustness in `find-gotchi.sh` and `show-gotchi.sh` (strict mode, argument guards, dependency checks).
+
+### Changed
+- Synced `package.json` + `VERSION` to `1.2.1`.
+
 ## [1.1.0] - 2026-02-22
 
 ### Changed - MAJOR UPDATE

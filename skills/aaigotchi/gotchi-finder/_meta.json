@@ -3,11 +3,16 @@
   "slug": "gotchi-finder",
   "displayName": "Gotchi Finder",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1771981459498,
-    "commit": "https://github.com/openclaw/skills/commit/0b23857e0af4525b21a89a04221d304593e3b572"
+    "version": "1.2.1",
+    "publishedAt": 1772826856347,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1771981459498,
+      "commit": "https://github.com/openclaw/skills/commit/0b23857e0af4525b21a89a04221d304593e3b572"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1771751735959,

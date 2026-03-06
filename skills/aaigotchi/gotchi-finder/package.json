@@ -1,6 +1,6 @@
 {
   "name": "gotchi-finder",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "description": "Find and display Aavegotchi by ID with traits and image",
   "main": "scripts/fetch-gotchi.js",
   "scripts": {

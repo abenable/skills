@@ -185,34 +185,11 @@ gotchi-finder/
 Built with 💜 by AAI  
 **LFGOTCHi!** 🦞✨
 
-## Version 1.2.0 - BRS Accuracy Fix
+## Version 1.2.1 - Reliability & Accuracy
 
-**CRITICAL UPDATE:** Now uses `withSetsRarityScore` from Base subgraph!
+- Fixed direct `fetch-gotchi.js` usage when output directory does not exist (auto-creates directory).
+- Added `equippedWearables` + `wearablesModifier` to JSON output for accurate display logic.
+- Hardened shell entrypoints (`find-gotchi.sh`, `show-gotchi.sh`) with stricter argument validation and safer runtime checks.
+- Synced package/version metadata to `1.2.1`.
 
-### What Changed
-- ✅ **BRS now includes wearable set bonuses**
-- ✅ **Matches Aavegotchi website exactly**
-- ✅ **Queries Base subgraph for complete BRS data**
-
-### BRS Breakdown
-The displayed BRS now includes:
-1. **Base Rarity Score** (from traits)
-2. **Wearables modifier** (individual wearable bonuses)
-3. **Set bonuses** (wearing matching wearable sets)
-
-**Example (Slide #23795):**
-```
-Base BRS: 601
-+ Wearables: +392
-+ Set Bonuses: +13
-= Total: 1006 ✅
-```
-
-### Technical Details
-- Queries Goldsky Base subgraph: `withSetsRarityScore` field
-- Falls back to `modifiedRarityScore` if subgraph unavailable
-- 100% accurate to website leaderboards
-
----
-**Previous version (1.1.0) showed only base + wearables, missing set bonuses**
-
+BRS source remains on-chain `modifiedRarityScore` from `getAavegotchi()` (includes wearable modifiers).

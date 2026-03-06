@@ -3,13 +3,14 @@ name: gotchi-finder
 description: >
   Fetch Aavegotchi by ID from Base mainnet and display image with full traits.
   Shows on-chain SVG, converts to PNG, and displays complete gotchi stats.
-homepage: https://github.com/aavegotchi/gotchi-finder-skill
+homepage: https://github.com/aaigotchi/gotchi-finder-skill
 metadata:
   openclaw:
     requires:
       bins:
         - node
         - npm
+        - jq
       env:
         - BASE_MAINNET_RPC
 ---

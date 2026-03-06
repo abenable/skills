@@ -2,8 +2,8 @@
 name: bloom
 description: >
   Zero questions asked. Reads your conversation memory in 60 seconds
-  and reveals your builder personality, blind spots, and matched tools —
-  ready to screenshot and share.
+  and maps your MentalOS — builder personality, blind spots, and
+  matched tools — ready to screenshot and share.
 user-invocable: true
 command-dispatch: tool
 metadata: {"requires": {"bins": ["node", "npx"], "env": ["OPENCLAW_USER_ID"]}, "optional_env": ["JWT_SECRET", "BLOOM_API_URL", "DASHBOARD_URL", "NETWORK"]}
@@ -14,7 +14,7 @@ permissions:
 
 # Bloom Discovery
 
-**Discover your builder taste — straight from your conversations.**
+**Discover your builder personality and get personalized tool recommendations.**
 
 ## Trust & Privacy
 
@@ -26,7 +26,7 @@ permissions:
   identifiable information, and wallet keys are never transmitted.
 - **User-initiated** — Only runs when you explicitly invoke `/bloom`.
 - **Open source** — Full source code at
-  [gitlab.com/bloom-protocol/bloom-discovery-skill](https://gitlab.com/bloom-protocol/bloom-discovery-skill)
+  [github.com/bloomprotocol/bloom-discovery-skill](https://github.com/bloomprotocol/bloom-discovery-skill)
 
 ## What You Get
 
@@ -44,12 +44,12 @@ Your personalized Bloom Identity Card reveals:
 
 Just type `/bloom` in your chat.
 
-We analyze your USER.md and last ~120 messages to understand:
-- **What excites you** — AI agents? productivity hacks? creative tools?
-- **How you engage** — deep dives vs. quick experiments
-- **Your taste profile** — 4 spectrums: try-first or study-first? gut or analytical? early adopter or proven-first? all-in or measured?
+Bloom reads your USER.md and recent conversations to:
+- **Map your MentalOS** — your operating style across 4 dimensions (Learning, Decision, Novelty, Risk)
+- **Find your blind spots** — patterns you might not notice yourself
+- **Recommend matched tools** — personalized picks from the Bloom skill catalog
 
-No complex setup. No wallet signatures. No auth flows.
+No surveys. No complex setup. No auth flows.
 
 ## Quick Start
 
@@ -158,7 +158,7 @@ Bloom Identity · Built for indie builders
 clawhub install bloom-discovery
 ```
 
-On first run, clones source from [gitlab.com/bloom-protocol/bloom-discovery-skill](https://gitlab.com/bloom-protocol/bloom-discovery-skill) into `~/.openclaw/workspace/`, runs `npm install`, and creates a `.env` with auto-generated JWT secret. Delete `~/.openclaw/workspace/bloom-identity-skill/` to fully uninstall.
+On first run, clones source from [github.com/bloomprotocol/bloom-discovery-skill](https://github.com/bloomprotocol/bloom-discovery-skill) into `~/.openclaw/workspace/`, runs `npm install`, and creates a `.env` with auto-generated JWT secret. Delete `~/.openclaw/workspace/bloom-identity-skill/` to fully uninstall.
 
 ## Troubleshooting
 

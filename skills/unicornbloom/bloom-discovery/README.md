@@ -30,7 +30,7 @@ Returns identity card + recommendations
 
 ```bash
 cd ~/.openclaw/workspace
-git clone https://gitlab.com/bloom-protocol/bloom-discovery-skill.git
+git clone https://github.com/bloomprotocol/bloom-discovery-skill.git
 cd bloom-identity-skill
 npm install
 ```
@@ -86,7 +86,7 @@ User: Mostly coding assistants and LLMs" | bash ~/.openclaw/skills/bloom-identit
 ```bash
 # Install the main skill first
 cd ~/.openclaw/workspace
-git clone https://gitlab.com/bloom-protocol/bloom-discovery-skill.git
+git clone https://github.com/bloomprotocol/bloom-discovery-skill.git
 cd bloom-identity-skill
 npm install
 ```

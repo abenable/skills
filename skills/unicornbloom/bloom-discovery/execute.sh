@@ -14,13 +14,13 @@
 #
 # WHAT IS NEVER SENT: raw conversation text, message content, PII
 #
-# Source: https://gitlab.com/bloom-protocol/bloom-discovery-skill
+# Source: https://github.com/bloomprotocol/bloom-discovery-skill
 # Verify: inspect scripts/run-from-session.ts and src/bloom-identity-skill-v2.ts
 
 set -e
 
 # Canonical source repository
-BLOOM_REPO="https://gitlab.com/bloom-protocol/bloom-discovery-skill.git"
+BLOOM_REPO="https://github.com/bloomprotocol/bloom-discovery-skill.git"
 
 # Get the directory of this script
 WRAPPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

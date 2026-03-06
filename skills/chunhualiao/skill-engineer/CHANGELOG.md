@@ -1,4 +1,18 @@
-## v3.1.0 — 2026-02-21
+# Changelog
+
+## [3.1.1] - 2026-02-28
+
+### Added
+- **README Sync step (10.5):** After all quality gates pass, orchestrator regenerates README from the actual shipped skill — commands from skill.yml, pipeline from SKILL.md, file layout from filesystem, Known Issues from Tester non-blocking report. Ensures README always reflects the real implementation, not the original design brief.
+- README sync checklist: version match, trigger coverage, OPSEC clean, Known Issues section, quality scorecard present.
+- README structure template for shipped skills (commands, pipeline, setup, config, data layout, known issues, scorecard, license).
+- Version Control update: README sync commit added before push; push only happens after README sync is complete.
+
+### Changed
+- Orchestrator step 10 → 10.5 inserted between "add scorecard" and "push to GitHub"
+- Step 11 (was "Track iteration") renumbered to 12; new step 11 is "Push to GitHub"
+- Version Control section: added README sync commit, clarified push timing
+
 
 ### Added
 - **Mandatory skill naming step** in Designer workflow (Step 2)

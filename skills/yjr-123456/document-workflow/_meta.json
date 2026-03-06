@@ -1,0 +1,11 @@
+{
+  "owner": "yjr-123456",
+  "slug": "document-workflow",
+  "displayName": "Document Workflow",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1772779158987,
+    "commit": null
+  },
+  "history": []
+}

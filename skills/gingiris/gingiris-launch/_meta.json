@@ -1,13 +1,18 @@
 {
   "owner": "gingiris",
   "slug": "gingiris-launch",
-  "displayName": "AI 产品全球发布行动指南",
+  "displayName": "Gingiris Launch",
   "latest": {
-    "version": "1.7.0",
-    "publishedAt": 1772720115378,
-    "commit": "https://github.com/openclaw/skills/commit/39ebb9bcedb75cc6b4ab96c19d5c320714fb52a7"
+    "version": "1.8.2",
+    "publishedAt": 1772721859654,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.7.0",
+      "publishedAt": 1772720115378,
+      "commit": "https://github.com/openclaw/skills/commit/39ebb9bcedb75cc6b4ab96c19d5c320714fb52a7"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1772718907447,

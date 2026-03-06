@@ -1,6 +1,6 @@
 ---
 name: memory-master
-version: 2.5.3
+version: 2.6.1
 description: "Local memory system with structured indexing and auto-learning. Auto-write, heuristic recall, auto learning when knowledge is insufficient. Compatible with self-improving-agent: auto-records skill completions and errors to knowledge base."
 author: 李哲龙
 tags: [memory, recall, indexing, context]
@@ -337,39 +337,57 @@ When writing to MEMORY.md:
 clawdhub install memory-master
 ```
 
-### 2. Auto-Initialize (Recommended)
+### 2. Auto-Initialize (Enhanced for v2.6.0)
 ```bash
 # This will automatically:
-# - Create memory directories
-# - Replace old memory rules in MEMORY.md with memory-master rules
-# - Create index files
+# - Migrate heartbeat rules from AGENTS.md to HEARTBEAT.md
+# - Optimize AGENTS.md (deduplicate, streamline, restructure)
+# - Convert MEMORY.md to pure lessons/experience repository
+# - Create memory directory structure and index files
+# - Backup original files to .memory-master-backup/ directory
 clawdhub init memory-master
 ```
 
-Or manually:
-```bash
-# 1. Replace memory rules in MEMORY.md:
-#    - Delete old memory-related sections in your MEMORY.md
-#    - Add memory-master-rules.md content
+**What the enhanced initialization does:**
 
-# 2. Create index files
-cp ~/.agents/skills/memory-master/templates/daily-index.md ~/.openclaw/workspace/memory/daily-index.md
-cp ~/.agents/skills/memory-master/templates/knowledge-index.md ~/.openclaw/workspace/memory/knowledge-index.md
+| Step | Action | Result |
+|------|--------|--------|
+| 1 | **Backup** | Original files saved to `.memory-master-backup/` |
+| 2 | **Heartbeat Migration** | Heartbeat content moved from AGENTS.md to HEARTBEAT.md |
+| 3 | **AGENTS.md Optimization** | Remove duplicates, outdated rules, streamline language |
+| 4 | **MEMORY.md Transformation** | Convert to pure lessons/experience repository |
+| 5 | **Memory Structure** | Create `memory/` directories and index files |
 
-# 3. Create directories
-mkdir ~/.openclaw/workspace/memory/daily
-mkdir ~/.openclaw/workspace/memory/knowledge
+**Post-initialization files:**
+```
+~/.openclaw/workspace/
+├── AGENTS.md              # Optimized behavior rules + memory system rules
+├── MEMORY.md              # Pure lessons/experience repository
+├── HEARTBEAT.md           # Heartbeat tasks and guidelines
+├── memory/
+│   ├── daily/             # Daily records (YYYY-MM-DD.md format)
+│   ├── knowledge/         # Knowledge base (*.md files)
+│   ├── daily-index.md     # Memory index
+│   └── knowledge-index.md # Knowledge index
 ```
 
-# Create daily index
+Or manually (advanced users):
+```bash
+# 1. Run the initialization script directly
+node ~/.agents/skills/memory-master/scripts/init.js
+
+# 2. Or manually copy templates
+cp ~/.agents/skills/memory-master/templates/optimized-agents.md ~/.openclaw/workspace/AGENTS.md
+cp ~/.agents/skills/memory-master/templates/heartbeat-template.md ~/.openclaw/workspace/HEARTBEAT.md
+cp ~/.agents/skills/memory-master/templates/memory-lessons.md ~/.openclaw/workspace/MEMORY.md
+
+# 3. Create memory directories
+mkdir -p ~/.openclaw/workspace/memory/daily
+mkdir -p ~/.openclaw/workspace/memory/knowledge
+
+# 4. Create index files
 cp ~/.agents/skills/memory-master/templates/daily-index.md ~/.openclaw/workspace/memory/daily-index.md
-
-# Create knowledge index  
 cp ~/.agents/skills/memory-master/templates/knowledge-index.md ~/.openclaw/workspace/memory/knowledge-index.md
-
-# Create directories
-mkdir ~/.openclaw/workspace/memory/daily
-mkdir ~/.openclaw/workspace/memory/knowledge
 ```
 
 ---
@@ -414,6 +432,27 @@ mkdir ~/.openclaw/workspace/memory/knowledge
 4. **Update index** — Always sync after writing
 5. **Heuristic recall** — Don't wait for user to trigger
 6. **Learn proactively** — When you don't know, say it and learn
+
+---
+
+## Compression Detection (v2.6.3+)
+
+**⚠️ Important: Must run after EVERY response!**
+
+### Run after every response:
+```bash
+node ~/.agents/skills/memory-master/scripts/detect.js
+```
+
+Display status at the bottom of every response:
+- **50%**: `📝 上下文使用率：50% - 是否需要记录记忆或知识库？`
+- **70%**: `⚠️ 上下文使用率：70% - 建议记录当前进度`
+- **85%**: `🚨 上下文使用率：85% - 请立即记录当前进度！`
+
+### Why this matters:
+- Prevents context loss from compression
+- Reminds user to record memories before data is lost
+- Works with heartbeat but runs more frequently
 
 ---
 

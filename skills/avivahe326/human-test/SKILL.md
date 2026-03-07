@@ -26,7 +26,7 @@ AI agents cannot judge human perception, emotion, or usability. This skill lets 
 
 ## Quick start
 
-You need an API key. Register at https://human-test.work/register to get one (free, 100 credits on signup).
+You need an API key. Register at https://human-test.work/register to get one (free).
 
 ### Create a test task
 
@@ -75,9 +75,10 @@ Response (when completed):
 | `title` | No | Auto from hostname | Task title |
 | `focus` | No | — | What testers should focus on |
 | `maxTesters` | No | 5 | Number of testers (1-50) |
-| `rewardPerTester` | No | 20 | Credits per tester |
 | `estimatedMinutes` | No | 10 | Expected test duration |
 | `webhookUrl` | No | — | HTTPS URL to receive the report on completion |
+| `repoUrl` | No | — | GitHub/Gitee repo URL for code-level fix suggestions |
+| `repoBranch` | No | repo default | Branch to analyze (only used with repoUrl) |
 
 ## Async webhook
 
@@ -90,25 +91,105 @@ If you provide a `webhookUrl`, the platform will POST the full report to that UR
   "title": "Test: example.com",
   "targetUrl": "https://example.com",
   "report": "## Executive Summary\n...",
+  "codeFixPrUrl": "https://github.com/user/repo/pull/1",
   "completedAt": "2026-03-02T12:00:00Z"
 }
 ```
 
-## Credits
+## Report format (structured for AI agents)
 
-- Signup: 100 free credits
-- Creating a task costs: `rewardPerTester × maxTesters` credits
-- Earn credits by testing other people's products (20 credits per test)
+The report is returned as a markdown string in the `report` field. It uses a **consistent, machine-parseable structure** designed for AI agents to read and act on directly — for example, to automatically file issues, create PRs, or prioritize a fix backlog.
 
-## Report contents
+### Section structure
 
-The AI-generated report includes:
-- Executive Summary
-- Key Findings (ranked by severity, citing specific testers)
-- Usability Issues (Critical / Major / Minor)
-- Positive Highlights
-- NPS Analysis with breakdown
-- Actionable Recommendations
+Every report contains these exact sections in order:
+
+```markdown
+## Metadata
+| Field | Value |
+|-------|-------|
+| Product | ... |
+| URL | ... |
+| Testers | N |
+| Avg NPS | X.X/10 |
+
+## Executive Summary
+(3-5 sentences, most critical finding first)
+
+## Issues
+### [CRITICAL] Issue title
+- **Evidence:** (specific testers and observations)
+- **Impact:** (effect on users)
+- **Recommendation:** (actionable fix)
+
+### [MAJOR] Issue title
+- **Evidence:** ...
+- **Impact:** ...
+- **Recommendation:** ...
+
+### [MINOR] Issue title
+...
+
+## Positive Highlights
+(What worked well)
+
+## NPS Analysis
+(Score breakdown, interpretation)
+
+## Recommendations
+- **P0** (fix immediately): ... (references issue)
+- **P1** (fix this sprint): ...
+- **P2** (next sprint): ...
+- **P3** (backlog): ...
+```
+
+### Parsing tips for agents
+
+- **Severity levels**: `[CRITICAL]`, `[MAJOR]`, `[MINOR]` — always in brackets in issue headers
+- **Priority tags**: `P0`, `P1`, `P2`, `P3` — in the Recommendations section
+- **Each issue has 3 fields**: Evidence, Impact, Recommendation — always bolded labels
+- **Metadata table**: always the first section, machine-readable key-value pairs
+- **NPS scores**: appear in Metadata (average) and NPS Analysis (per-tester breakdown)
+
+## Agent auto-fix workflow
+
+The structured report format is designed for a closed-loop workflow: your agent calls `human_test()`, receives the report, and automatically fixes the issues found — no human intervention needed after testing.
+
+### Recommended flow
+
+1. Call `human_test()` with your product URL (include `webhookUrl` to get notified)
+2. Wait for the report (poll `/api/skill/status/<taskId>` or receive webhook)
+3. Parse the `## Issues` section — each issue has `[SEVERITY]`, Evidence, Impact, and Recommendation
+4. For `[CRITICAL]` and `[MAJOR]` issues, use the **Recommendation** field to generate targeted code fixes
+5. Create commits or PRs for each fix
+6. (Optional) Call `human_test()` again to verify the fixes
+
+Each issue's **Evidence** tells you what went wrong, **Impact** tells you why it matters, and **Recommendation** tells you exactly what to fix. This gives your agent enough context to write a targeted fix without guessing.
+
+## Repo-aware code fix suggestions
+
+If you pass a `repoUrl`, the platform will clone your repo after the report is generated and produce **file-level code fix suggestions** (with unified diffs) appended to the report as a `## Code Fix Suggestions` section.
+
+### Two modes (auto-detected)
+
+**Mode 1 — Read-only:** Grant GitHub user `avivahe326` read access to your repo. After the report, the platform clones the repo, analyzes the code against reported issues, and appends code-level diffs to the report.
+
+**Mode 2 — Developer access:** Grant `avivahe326` write access. Same as Mode 1, plus: creates a branch `human-test/fixes-<taskId>`, applies the diffs, pushes, and opens a PR. The PR URL is returned in the webhook payload as `codeFixPrUrl` and in the status API.
+
+### Example with repoUrl
+
+```bash
+curl -X POST https://human-test.work/api/skill/human-test \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://your-product.com",
+    "focus": "Test the checkout flow",
+    "repoUrl": "https://github.com/your-org/your-repo",
+    "repoBranch": "main",
+    "webhookUrl": "https://your-server.com/webhook"
+  }'
+```
 
 ## Links
 

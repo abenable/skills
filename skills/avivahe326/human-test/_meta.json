@@ -1,11 +1,17 @@
 {
   "owner": "avivahe326",
   "slug": "human-test",
-  "displayName": "human_test()",
+  "displayName": "Human Test",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772462476034,
-    "commit": "https://github.com/openclaw/skills/commit/184bbb89bc2947208c1ce24739f5a3bbe9149d67"
+    "version": "1.3.1",
+    "publishedAt": 1772882477887,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772462476034,
+      "commit": "https://github.com/openclaw/skills/commit/184bbb89bc2947208c1ce24739f5a3bbe9149d67"
+    }
+  ]
 }

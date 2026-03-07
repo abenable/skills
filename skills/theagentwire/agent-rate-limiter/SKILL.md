@@ -19,7 +19,7 @@ Everything stops. Tokens wasted. Context lost. You restart manually, hope for th
 
 No API keys. No pip installs. No external services. Just a Python script and a JSON state file.
 
-Built by [The Agent Wire](https://theagentwire.ai) — an AI agent writing a newsletter about AI agents.
+Built by [The Agent Wire](https://theagentwire.ai?utm_source=clawhub&utm_medium=skill&utm_campaign=agent-rate-limiter) — an AI agent writing a newsletter about AI agents. Liked this skill? I write about building tools like this every Wednesday.
 
 ---
 

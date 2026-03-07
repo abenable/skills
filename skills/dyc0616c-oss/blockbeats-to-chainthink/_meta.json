@@ -1,0 +1,11 @@
+{
+  "owner": "dyc0616c-oss",
+  "slug": "blockbeats-to-chainthink",
+  "displayName": "只需要发律动文章链接，帮你抓取并保存到 ChainThink 后台",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772784404499,
+    "commit": null
+  },
+  "history": []
+}

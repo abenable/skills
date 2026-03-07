@@ -1,0 +1,11 @@
+{
+  "owner": "yedanyagamiai-cmd",
+  "slug": "openclaw-json-toolkit",
+  "displayName": "OpenClaw JSON Toolkit",
+  "latest": {
+    "version": "2.0.0",
+    "publishedAt": 1772849416689,
+    "commit": null
+  },
+  "history": []
+}

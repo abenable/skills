@@ -1,0 +1,11 @@
+{
+  "owner": "dicasdomaroto-maker",
+  "slug": "waze",
+  "displayName": "Waze",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772855257221,
+    "commit": null
+  },
+  "history": []
+}

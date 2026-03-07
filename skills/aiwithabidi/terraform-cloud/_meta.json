@@ -1,0 +1,11 @@
+{
+  "owner": "aiwithabidi",
+  "slug": "terraform-cloud",
+  "displayName": "Terraform Cloud",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772837567816,
+    "commit": null
+  },
+  "history": []
+}

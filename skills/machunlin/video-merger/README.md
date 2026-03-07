@@ -1,46 +1,89 @@
-# Video Merger
-> 多片段短视频自动拼接工具，支持按文件名排序、统一音视频参数、淡入淡出转场，适合AI短剧、分镜头视频批量拼接
+# 🎬 video-merger
+> 轻量级命令行工具，自动拼接多个分段短视频为完整长视频，专为AI短剧、分镜头视频批量拼接场景设计。
 
-## 功能特性
-✅ 严格按文件名数字序号排序，保证剧情顺序正确  
-✅ 自动保持原始分辨率/支持自定义输出分辨率  
-✅ 统一帧率、编码，保证播放流畅  
-✅ 支持淡入淡出转场效果，可自定义转场时长  
-✅ 自动同步音轨，完整保留原音频  
-✅ 轻量无依赖，仅需ffmpeg和Python3
+## About
+`video-merger` 自动识别按数字前缀命名的视频片段，按顺序拼接为完整视频，支持自动统一音视频参数、淡入淡出转场、自定义分辨率，无Python第三方依赖，仅需系统安装ffmpeg即可使用。
 
-## 安装
+## Installation
+### 1. 安装依赖
+仅需要ffmpeg：
 ```bash
-# 安装依赖
-brew install ffmpeg  # macOS
-# 或 sudo apt install ffmpeg # Ubuntu/Debian
+# macOS
+brew install ffmpeg
 
-# 克隆项目
-git clone https://github.com/[your-username]/video-merger.git
+# Ubuntu/Debian
+sudo apt install ffmpeg
+```
+
+### 2. 安装video-merger
+```bash
+# 从PyPI安装（后续支持）
+pip install video-merger
+
+# 从源码安装
+git clone https://github.com/machunlin/video-merger.git
 cd video-merger
+pip install .
 ```
+安装完成后即可全局使用 `video-merger` 命令。
 
-## 使用方法
+## Configuration
+无需额外配置，所有参数通过命令行传递即可。
+
+## Usage
+### 基础用法
+将`./segments`目录下的视频按顺序拼接为`full_video.mp4`：
 ```bash
-# 基础使用：保持原始分辨率拼接
-python3 scripts/merge_full_video.py --input /path/to/your/segments --output ./full_video.mp4
-
-# 自定义分辨率和转场时长
-python3 scripts/merge_full_video.py --input /path/to/segments --output ./full_1080p.mp4 --resolution 1080x1920 --transition 1.0
+video-merger --input ./segments --output ./full_video.mp4
 ```
 
-## 参数说明
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `--input` | 分镜头视频所在目录，文件需以`数字_`开头命名 | 必填 |
-| `--output` | 输出视频文件路径 | 必填 |
-| `--resolution` | 自定义输出分辨率，如`1080x1920` | 保持原始分辨率 |
-| `--transition` | 淡入淡出转场时长（秒） | 0.5 |
+### 自定义参数
+```bash
+# 自定义输出分辨率1080x1920，转场1秒
+video-merger -i ./segments -o ./1080p_output.mp4 -r 1080x1920 -t 1.0
 
-## 适用场景
-- AI生成短剧分镜头批量拼接
-- 录制的分段视频自动合并
-- 短视频批量生产处理
+# 更高质量输出
+video-merger -i ./segments -o ./high_quality.mp4 --crf 18 --preset slow
+```
+
+### 所有参数
+```
+$ video-merger --help
+Usage: video-merger [OPTIONS]
+
+Options:
+  -i, --input DIRECTORY     分镜头视频所在目录 [required]
+  -o, --output FILE         输出视频文件路径 [required]
+  -r, --resolution TEXT     自定义输出分辨率，如1080x1920，默认保持原始
+  -t, --transition FLOAT    淡入淡出转场时长（秒）[default: 0.5]
+  --fps INTEGER             输出帧率 [default: 24]
+  --crf INTEGER             视频质量(0-51，越小质量越高)[default: 22]
+  --preset TEXT             编码速度预设 [default: medium]
+  --ffmpeg-path TEXT        自定义ffmpeg路径 [default: ffmpeg]
+  --ffprobe-path TEXT       自定义ffprobe路径 [default: ffprobe]
+  --help                    Show this message and exit.
+```
+
+### 输入文件命名规则
+输入目录下的视频文件名必须以数字前缀开头，工具会自动按数字顺序拼接：
+```
+segments/
+├── 001_开场.mp4
+├── 002_中景.mp4
+├── 003_对话.mp4
+└── 004_结尾.mp4
+```
+
+## Examples
+### 批量处理多集短剧
+```python
+from video_merger import VideoMerger
+
+merger = VideoMerger()
+episodes = ["./ep1", "./ep2", "./ep3"]
+for i, ep_dir in enumerate(episodes, 1):
+    merger.merge(input_dir=ep_dir, output_path=f"./output/ep{i}.mp4")
+```
 
 ## License
-MIT
+MIT - see [LICENSE](LICENSE) for details.

@@ -19,7 +19,7 @@ metadata:
       env:
         - SKILLBOSS_API_KEY
     primaryEnv: SKILLBOSS_API_KEY
-    installHint: "Get your API key at https://skillboss.co/console?utm_source=clawhub&utm_medium=skill&utm_campaign=ai-search - $2 FREE credits included!"
+    installHint: "Get your API key at https://skillboss.co/pricing?utm_source=clawhub&utm_medium=skill&utm_campaign=ai-search - $2 FREE credits included!"
 ---
 
 # AI Search
@@ -48,7 +48,7 @@ Visit [skillboss.co/pricing](https://skillboss.co/pricing) for current rates.
 
 ## Get Started
 
-1. Get your API key at [skillboss.co/console](https://skillboss.co/console?utm_source=clawhub&utm_medium=skill&utm_campaign=ai-search)
+1. Get your API key at [skillboss.co/pricing](https://skillboss.co/pricing?utm_source=clawhub&utm_medium=skill&utm_campaign=ai-search)
 2. Set `SKILLBOSS_API_KEY` in your environment
 3. Start making requests!
 

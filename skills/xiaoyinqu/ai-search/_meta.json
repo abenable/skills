@@ -3,11 +3,16 @@
   "slug": "ai-search",
   "displayName": "Ai Search",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772754396269,
-    "commit": "https://github.com/openclaw/skills/commit/e1338583a619ed98a469a62f8d895b6f328bec71"
+    "version": "1.0.2",
+    "publishedAt": 1772866121354,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772754396269,
+      "commit": "https://github.com/openclaw/skills/commit/e1338583a619ed98a469a62f8d895b6f328bec71"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772448964548,

@@ -1,6 +1,6 @@
 ---
 name: crypto-arbitrage-scanner
-description: 加密货币套利扫描器 - 跨交易所价差检测，三角形套利机会，实时警报。每次调用自动扣费 0.001 USDT
+description: Cryptocurrency arbitrage scanner - detect cross-exchange price differences, triangular arbitrage opportunities, real-time alerts. Each call charges 0.001 USDT via SkillPay.
 version: 1.0.0
 author: moson
 tags:
@@ -8,11 +8,26 @@ tags:
   - scanner
   - trading
   - defi
+  - crypto
+  - profit
+  - trading-bot
+homepage: https://github.com/moson/crypto-arbitrage-scanner
+metadata:
+  clawdbot:
+    requires:
+      env:
+        - SKILLPAY_API_KEY
 triggers:
   - "套利"
   - "arbitrage"
   - "价差"
   - "套利机会"
+  - "arbitrage opportunity"
+  - "cross exchange"
+  - "triangular arbitrage"
+  - "加密货币套利"
+  - "交易所差价"
+  - "profit scanning"
 price: 0.001 USDT per call
 ---
 
@@ -47,8 +62,30 @@ price: 0.001 USDT per call
 { action: "alert", threshold: 0.5 }
 ```
 
+## 输出示例
+
+```json
+{
+  "success": true,
+  "opportunities": [
+    {
+      "type": "cross-exchange",
+      "pair": "BTC/USDT",
+      "buyExchange": "binance",
+      "sellExchange": "bybit",
+      "priceDiff": "0.8%",
+      "netProfit": "0.5%"
+    }
+  ]
+}
+```
+
 ## 风险提示
 
 - 套利机会往往转瞬即逝
 - 需要足够流动性
 - 考虑滑点和 Gas
+
+## 价格
+
+每次调用: 0.001 USDT

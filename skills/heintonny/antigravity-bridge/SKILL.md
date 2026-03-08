@@ -1,17 +1,22 @@
 ---
 name: antigravity-bridge
+version: 1.2.2
 description: >-
-  Bidirectional knowledge bridge between OpenClaw and Google Antigravity IDE.
-  Sync Knowledge Items, tasks, memory, and lessons learned across both agent systems.
+  One-directional knowledge bridge from Google Antigravity IDE to OpenClaw.
+  Keeps the OpenClaw agent informed about project development without replacing
+  Antigravity as the primary coding agent. Antigravity has deep codebase awareness
+  (IDE, LSP, vectors, code tracker, annotations) — OpenClaw has breadth (24/7 availability,
+  cross-project awareness, business ops, monitoring, communications).
+  The bridge syncs: Knowledge Items, tasks (.agent/tasks.md), lessons learned
+  (.agent/memory/), rules, skills, workflows, and session handoffs.
   Use when: (1) syncing Antigravity knowledge to OpenClaw context,
-  (2) picking up tasks from .agent/tasks.md for coding sub-agents,
+  (2) analyzing tasks for next-task recommendations,
   (3) running cross-agent self-improve (updates both systems),
   (4) checking what Antigravity sessions produced,
-  (5) creating session handoffs between agents,
-  (6) user says "sync antigravity", "pick task", "what did antigravity do",
-  "self-improve", "bridge sync", or "antigravity status".
-  NOT for: Antigravity model/provider configuration (use google-antigravity-auth plugin),
-  or starting the Antigravity IDE (use `agy` CLI directly).
+  (5) user says "sync antigravity", "pick task", "what did antigravity do",
+  "bridge sync", or "antigravity status".
+  NOT for: primary coding (use Antigravity), model/provider config,
+  or starting the IDE (use `agy` CLI).
 homepage: https://github.com/heintonny/antigravity-bridge
 metadata: {"openclaw":{"emoji":"🌉","tags":["antigravity","gemini","knowledge-sync","multi-agent","bridge","ide","tasks","coding"]}}
 ---
@@ -47,22 +52,59 @@ Or create `~/.openclaw/antigravity-bridge.json` manually:
 }
 ```
 
-## Commands
+## Sync Command — The Core Workflow
 
-### Sync Knowledge (`sync`)
-
-Pull latest Antigravity knowledge into OpenClaw context:
+### Running the sync
 
 ```bash
 python3 scripts/sync_knowledge.py
 ```
 
-What it does:
-1. Reads all Knowledge Item (KI) summaries from `knowledge/*/metadata.json`
-2. Reads `.agent/tasks.md` for current project state
-3. Reads `.agent/memory/` for recent lessons learned
-4. Reads `.agent/sessions/` for continuation prompts
-5. Generates a summary file in your OpenClaw workspace
+This outputs **structured JSON to stdout** with two sections:
+- `diff` — what changed since last sync (or "first sync" if no previous state)
+- `current` — full snapshot of current Antigravity state
+
+State is tracked in `~/.openclaw/workspace/antigravity-sync-state.json`.
+
+### Agent responsibilities after sync
+
+**The agent (not the script) is responsible for updating OpenClaw memory.**
+
+After running the sync script, the agent MUST:
+
+1. **Read the JSON output**, focusing on the `diff` section
+2. **If `diff.is_first_sync` is true or `diff.summary` shows changes:**
+   - Update `MEMORY.md` with significant changes:
+     - Task count changes (done/todo deltas)
+     - New or removed KI topics
+     - New active tasks or phase changes
+     - New lessons learned (from memory files)
+   - Append a sync log entry to `memory/YYYY-MM-DD.md`:
+     ```
+     HH:MM — Antigravity Bridge sync: <diff.summary>
+     ```
+3. **If `diff.summary` is "No changes since last sync":**
+   - No updates needed. Optionally log the sync attempt.
+
+### What goes where
+
+| Change type | Target | What to write |
+|---|---|---|
+| Task count deltas | `MEMORY.md` → CodePact section | Update done/todo counts |
+| New active `[>]` tasks | `MEMORY.md` → Current Phase | Replace active task info |
+| New KI topics | `MEMORY.md` → CodePact section | Note new topic names |
+| New memory/lessons files | `MEMORY.md` → relevant section | Summarize key lessons |
+| New rules/skills/workflows | `MEMORY.md` → CodePact section | Update inventory counts |
+| Session handoff changes | `MEMORY.md` → CodePact section | Note current handoff context |
+| Any sync event | `memory/YYYY-MM-DD.md` | Timestamped log entry |
+
+### What NOT to do
+
+- Do NOT create standalone reference docs (no ANTIGRAVITY.md, no antigravity-sync.md)
+- Do NOT dump raw sync data into files — distill into MEMORY.md
+- Do NOT ask the user whether to update MEMORY.md — just do it
+
+## Other Commands
 
 ### Diff Tasks (`diff`)
 
@@ -72,52 +114,52 @@ Show what changed in tasks since last sync:
 python3 scripts/diff_tasks.py
 ```
 
-### Next Task (`next-task`)
+### Next Task (`pick-task`) — mirrors Antigravity's /next-task
 
-Analyze project state and recommend 2-3 tasks interactively
-(mirrors Antigravity's `/next-task` workflow):
+Gather project context for intelligent task selection:
 
-**Step 1: Gather context** (run the script for raw data):
 ```bash
-python3 scripts/pick_task.py --dry-run
+python3 scripts/pick_task.py
 ```
 
-**Step 2: Agent analysis** (do NOT just pick the first `[ ]` task):
+This outputs **structured JSON context** (does NOT modify tasks.md). The agent uses this to reason.
 
-1. Read `.agent/tasks.md` — check `[>]` (active) tasks first
-2. Read `git log --oneline -15` for recent development context
-3. Read relevant `.agent/memory/` files for lessons learned
-4. Read KI summaries for domain awareness
-5. Cross-reference: what's active? What's blocked? What's a quick win?
+**Agent workflow after running pick-task:**
 
-**Step 3: Present 2-3 recommendations** in this format:
+1. Read the JSON output (tasks, git log, sessions, memory)
+2. Analyze:
+   - Active `[>]` tasks that need finishing
+   - Session handoffs (continuation prompts from Antigravity)
+   - Recent commits (what was just worked on)
+   - Phase dependencies (what's unblocked)
+3. Recommend **2-3 tasks** to the user with:
+   - Context: why this task now
+   - Scope: what's involved
+   - Effort: Small / Medium / Large
+4. Present as numbered options:
+   ```
+   🎯 Recommended Next Tasks — Reply 1, 2, or 3
 
-> 🎯 **Recommended Next Tasks** — Reply with the number to start.
->
-> **Option 1: [Task Name]** ⭐ (if active/in-progress)
-> - Context: Why this task is recommended now
-> - Scope: What's involved
-> - Effort: Small / Medium / Large
->
-> **Option 2: [Task Name]**
-> - Context: ...
-> - Scope: ...
-> - Effort: ...
->
-> Reply `1`, `2`, or `3` to start • `all` for details • `skip` to defer
+   ### Option 1: [Task Name] ⭐
+   - Context: ...
+   - Scope: ...
+   - Effort: Medium
 
-**Step 4: On selection:**
-- Mark chosen task `[>]` in tasks.md
-- Create feature branch: `clawd/<task-kebab-name>`
-- Load all relevant rules, memory, KIs
-- Spawn coding sub-agent or begin implementation
+   ### Option 2: [Task Name]
+   ...
+   ```
+5. User picks → agent marks task `[>]` in tasks.md
+6. Agent spawns coding sub-agent with task brief (rules + relevant memory + KIs)
+7. After completion: mark `[x]`, run self-improve
 
 **Priority criteria (in order):**
 1. Active but incomplete (`[>]` tasks)
 2. Unblocking (enables other work)
 3. Quick wins (low effort, high value)
-4. Technical debt
-5. Natural phase progression
+4. Technical debt (flagged in audits/lessons)
+5. Natural progression (next step in current phase)
+
+**The script gathers data. The agent thinks. The user decides.**
 
 ### Self-Improve (`self-improve`)
 
@@ -150,19 +192,13 @@ python3 scripts/write_ki.py \
 
 ### Create Antigravity Skill (`create-agy-skill`)
 
-Generate the reverse-direction Antigravity skill that enables
-Antigravity to delegate tasks to OpenClaw:
+Generate the reverse-direction Antigravity skill:
 
 ```bash
 python3 scripts/create_agy_skill.py --project-dir ~/path/to/project
 ```
 
-This creates `.agent/skills/openclaw-bridge/SKILL.md` in your project,
-teaching Antigravity how to communicate with OpenClaw agents.
-
 ## Architecture
-
-For detailed architecture documentation, see [references/architecture.md](references/architecture.md).
 
 ```
 ┌─────────────────────┐       ┌─────────────────────┐
@@ -170,11 +206,27 @@ For detailed architecture documentation, see [references/architecture.md](refere
 │    (Gemini)          │       │    (Any LLM)         │
 │                      │       │                      │
 │  knowledge/       ◄──┼───────┼──► MEMORY.md         │
-│  .agent/tasks.md  ◄──┼───────┼──► tasks (sub-agents)│
-│  .agent/memory/   ◄──┼───────┼──► memory/*.md       │
-│  .agent/sessions/ ◄──┼───────┼──► session handoffs   │
+│  .agent/tasks.md  ◄──┼───────┼──► MEMORY.md (tasks) │
+│  .agent/memory/   ◄──┼───────┼──► MEMORY.md (lessons)│
+│  .agent/sessions/ ◄──┼───────┼──► MEMORY.md (handoff)│
+│  .agent/rules/    ───┼───────┼──► MEMORY.md (counts) │
+│  .agent/skills/   ───┼───────┼──► MEMORY.md (counts) │
+│  .agent/workflows/───┼───────┼──► MEMORY.md (counts) │
 └─────────────────────┘       └─────────────────────┘
+         │                              │
+         └──── state.json ◄─────────────┘
+              (diff tracking)
 ```
+
+## State File
+
+`~/.openclaw/workspace/antigravity-sync-state.json` tracks:
+- Last sync timestamp
+- KI topic hashes and artifact counts
+- Task file hash and counts
+- Memory/rules/skills/workflows file hashes
+
+This enables precise change detection without markdown diffing.
 
 ## Security & Privacy
 

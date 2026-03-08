@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "bluebeam",
+  "displayName": "Bluebeam",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772870533110,
+    "commit": null
+  },
+  "history": []
+}

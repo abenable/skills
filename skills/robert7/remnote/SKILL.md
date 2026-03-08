@@ -1,6 +1,6 @@
 ---
 name: remnote
-description: Read/search RemNote via `remnote-cli` by default; require `confirm write` before create/update/journal.
+description: Search, read, and write RemNote notes and personal knowledge base content via `remnote-cli`. Use for note-taking, journaling, tags, and knowledge-base navigation; require `confirm write` before create/update/journal.
 homepage: https://github.com/robert7/remnote-cli
 metadata:
   {
@@ -75,6 +75,16 @@ If any precondition is missing, stop and fix setup first.
 - RIGHT: `remnote-cli status --text`
 - Reason: command chaining can trigger exec approvals and break automation flow.
 
+## Write Payload Rule (allowlist-friendly)
+
+- For write commands, prefer file-based payload flags:
+  - `--content-file <path|->` for `create` / `journal`
+  - `--append-file <path|->` or `--replace-file <path|->` for `update`
+- Keep executed command strings short and predictable for OpenClaw allowlisting.
+- Inline `--content` / `--append` and positional `journal [content]` are discouraged except for very short single-line
+  text.
+- `-` (stdin) is supported but discouraged by default in OpenClaw flows because command context can be less explicit.
+
 ## Compatibility Check (mandatory before real work)
 
 1. Check daemon and bridge connectivity:
@@ -85,6 +95,7 @@ If any precondition is missing, stop and fix setup first.
    - active plugin version
    - CLI version
    - `version_warning` (if present)
+   - write-policy flags: `acceptWriteOperations`, `acceptReplaceOperation`
 4. Enforce version rule: bridge plugin and `remnote-cli` must be the same `0.x` minor line (prefer exact match).
 5. If mismatch:
    - Install matching CLI version:
@@ -131,9 +142,17 @@ If any precondition is missing, stop and fix setup first.
 
 ### Mutating Operations (only after `confirm write`)
 
-- Create: `remnote-cli create "Title" --content "Body" --text`
-- Update: `remnote-cli update <rem-id> --title "New Title" --append "More text" --text`
-- Journal: `remnote-cli journal "Entry text" --text`
+- Create (preferred): `remnote-cli create "Title" --content-file /tmp/body.md --text`
+- Update (preferred): `remnote-cli update <rem-id> --title "New Title" --append-file /tmp/append.md --text`
+- Update replace (destructive, preferred only with explicit user intent):
+  - `remnote-cli update <rem-id> --replace-file /tmp/replacement.md --text`
+  - `remnote-cli update <rem-id> --replace "" --text` (clear all direct children)
+- Journal (preferred): `remnote-cli journal --content-file /tmp/entry.md --text`
+- Fallbacks (discouraged): inline flags or positional `journal [content]` for short single-line text only.
+- Safety:
+  - Never combine append and replace flags in one command.
+  - Run replace only when `acceptWriteOperations=true` and `acceptReplaceOperation=true` from `status`.
+  - Treat replace as destructive and require the user to clearly request replace semantics.
 
 ## Failure Handling
 

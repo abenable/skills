@@ -3,11 +3,16 @@
   "slug": "ravi-passwords",
   "displayName": "Ravi passwords",
   "latest": {
-    "version": "1.7.0",
-    "publishedAt": 1772783526992,
-    "commit": "https://github.com/openclaw/skills/commit/43f4237c05c0d566ac682f68aaeb7e969dc8fc05"
+    "version": "1.7.1",
+    "publishedAt": 1772960996745,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.7.0",
+      "publishedAt": 1772783526992,
+      "commit": "https://github.com/openclaw/skills/commit/43f4237c05c0d566ac682f68aaeb7e969dc8fc05"
+    },
     {
       "version": "1.6.0",
       "publishedAt": 1772282682579,

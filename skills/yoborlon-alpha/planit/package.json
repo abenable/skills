@@ -1,0 +1,13 @@
+{
+  "name": "planit",
+  "version": "1.1.0",
+  "description": "PlanIt - 一句话规划出行 (OpenClaw Skill)",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test/test.js"
+  },
+  "keywords": ["openclaw", "skill", "travel", "planning"],
+  "license": "MIT"
+}

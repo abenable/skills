@@ -3,11 +3,16 @@
   "slug": "botlearn-assessment",
   "displayName": "botlearn-assessment",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1772700895277,
-    "commit": "https://github.com/openclaw/skills/commit/f1c0037bfff0ac4dc5a27399a3f4c8e3754727ca"
+    "version": "1.0.5",
+    "publishedAt": 1772826632971,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1772700895277,
+      "commit": "https://github.com/openclaw/skills/commit/f1c0037bfff0ac4dc5a27399a3f4c8e3754727ca"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1772608246485,

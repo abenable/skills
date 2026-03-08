@@ -1,0 +1,11 @@
+{
+  "owner": "yinanping-cpu",
+  "slug": "yinan-web-scraper",
+  "displayName": "Web Scraper",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772874844033,
+    "commit": null
+  },
+  "history": []
+}

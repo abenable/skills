@@ -3,11 +3,16 @@
   "slug": "caduceusmail",
   "displayName": "☤CaduceusMail",
   "latest": {
-    "version": "5.3.3",
-    "publishedAt": 1772747189840,
-    "commit": "https://github.com/openclaw/skills/commit/e19a5fc4f004ad22992d212e4fef50ac65260345"
+    "version": "3.6.7",
+    "publishedAt": 1772988754604,
+    "commit": null
   },
   "history": [
+    {
+      "version": "5.3.3",
+      "publishedAt": 1772747189840,
+      "commit": "https://github.com/openclaw/skills/commit/e19a5fc4f004ad22992d212e4fef50ac65260345"
+    },
     {
       "version": "5.1.1",
       "publishedAt": 1772745615280,

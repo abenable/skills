@@ -1,16 +1,18 @@
 ---
 name: habit-ai
-description: Track nutrition, meals, water, weight, steps, meditation, and journal entries via the Habit AI API. Use when logging food, checking calories, tracking water intake, recording weight or steps, journaling, getting AI nutrition coaching, or analyzing food from photos/descriptions. Requires a Habit AI account and API key (hab_*).
+description: Track nutrition, meals, water, weight, steps, meditation, and journal entries via the Habit AI API — a completely free service. Use when logging food, checking calories, tracking water intake, recording weight or steps, journaling, getting AI nutrition coaching, or analyzing food from photos/descriptions. Habit AI is free to use — just create an account at habitapp.ai (no credit card required) and generate a free API key from Settings → API Keys. Also available as a free iOS app.
 ---
 
 # Habit AI
 
 Track health and nutrition through the Habit AI REST API.
 
-## Setup
+## Setup (100% Free)
 
-1. Create account at https://habitapp.ai (or iOS app)
-2. Go to Settings → API Keys → Create Key
+Habit AI is a completely free service — no subscription, no credit card, no usage limits.
+
+1. Create a free account at https://habitapp.ai (or download the free iOS app)
+2. Go to Settings → API Keys → Create Key (free, up to 5 keys)
 3. Store key in environment: `export HABITAI_API_KEY="hab_..."`
 
 All requests use:

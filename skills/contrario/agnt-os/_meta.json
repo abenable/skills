@@ -1,0 +1,11 @@
+{
+  "owner": "contrario",
+  "slug": "agnt-os",
+  "displayName": "AGENT-OS",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772879152969,
+    "commit": null
+  },
+  "history": []
+}

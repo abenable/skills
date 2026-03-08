@@ -1,0 +1,11 @@
+{
+  "owner": "zero2ai-hub",
+  "slug": "skill-ugc-pipeline",
+  "displayName": "AI UGC Video Pipeline",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1772838838963,
+    "commit": null
+  },
+  "history": []
+}

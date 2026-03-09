@@ -1,0 +1,11 @@
+{
+  "owner": "zhenstaff",
+  "slug": "enterprise-hub",
+  "displayName": "Enterprise Agent OS",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772884372471,
+    "commit": null
+  },
+  "history": []
+}

@@ -1,5 +1,6 @@
 ---
 name: linux-to-mac-bridge
+version: "1.2.1"
 description: Legacy combined bridge skill for Linux-to-Mac wrapper installs. Prefer the newer split skills `macos-bridge` for Mac-owned CLIs and `homebrew-bridge` for Homebrew-backed tools.
 metadata: {"openclaw":{"emoji":"🌉"}}
 ---

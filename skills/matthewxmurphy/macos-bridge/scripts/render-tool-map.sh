@@ -13,35 +13,44 @@ config_path = Path(sys.argv[1])
 cfg = json.loads(config_path.read_text())
 channels = cfg.get("channels") or {}
 
-hosts = []
-for channel in channels.values():
-    if not isinstance(channel, dict):
-        continue
-    remote_host = channel.get("remoteHost")
-    if isinstance(remote_host, str) and remote_host.strip():
-        host = remote_host.strip()
-        if host not in hosts:
-            hosts.append(host)
+channel_by_tool = [
+    ("imsg", "imessage"),
+    ("remindctl", "reminders"),
+    ("memo", "notes"),
+    ("things", "things"),
+    ("peekaboo", "peekaboo"),
+]
 
-if hosts:
-    print("# Auto-discovered macOS tool ownership map")
+def channel_enabled(channel):
+    if not isinstance(channel, dict):
+        return False
+    enabled = channel.get("enabled")
+    if isinstance(enabled, bool):
+        return enabled
+    return bool(channel)
+
+entries = []
+hosts = []
+for tool, channel_name in channel_by_tool:
+    channel = channels.get(channel_name)
+    if not channel_enabled(channel):
+        continue
+    remote_host = channel.get("remoteHost") if isinstance(channel, dict) else None
+    host = remote_host.strip() if isinstance(remote_host, str) and remote_host.strip() else None
+    if host and host not in hosts:
+        hosts.append(host)
+    entries.append((tool, host))
+
+if entries:
+    print("# Auto-discovered macOS tool ownership map for enabled channels")
     print(f"# Source: {config_path}")
     print()
-    imsg_host = None
-    imessage = channels.get("imessage")
-    if isinstance(imessage, dict):
-        remote_host = imessage.get("remoteHost")
-        if isinstance(remote_host, str) and remote_host.strip():
-            imsg_host = remote_host.strip()
-    default_host = hosts[0]
-    print(f"imsg={imsg_host or default_host}")
-    print(f"remindctl={default_host}")
-    print(f"memo={default_host}")
-    print(f"things={default_host}")
-    print(f"peekaboo={default_host}")
+    default_host = hosts[0] if len(hosts) == 1 else "mac-ops@mac-node.local"
+    for tool, host in entries:
+        print(f"{tool}={host or default_host}")
     print()
     print("# Optional Wake-on-LAN map by host or user@host")
-    for host in hosts:
+    for host in hosts or [default_host]:
         print(f"# {host}=AA:BB:CC:DD:EE:FF")
     raise SystemExit(0)
 PY

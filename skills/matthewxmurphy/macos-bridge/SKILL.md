@@ -1,6 +1,7 @@
 ---
 name: macos-bridge
-description: Bridge Mac-owned tools like imsg, remindctl, memo, things, and peekaboo onto a Linux OpenClaw gateway by installing explicit same-LAN SSH wrappers with optional Wake-on-LAN and OpenClaw config auto-discovery.
+version: 0.6.2
+description: Bridge Mac-owned tools like imsg, remindctl, memo, things, and peekaboo onto a Linux OpenClaw gateway by installing explicit same-LAN SSH wrappers with optional Wake-on-LAN, enabled-channel auto-discovery, and OpenClaw config fallback.
 metadata: {"openclaw":{"emoji":"🍎"}}
 ---
 
@@ -18,11 +19,16 @@ This skill is for tools that are inherently macOS-backed:
 
 It does not try to make Linux pretend those binaries are native. It installs explicit Linux-side wrappers that call the owning Mac over SSH.
 
+If the matching feature is disabled in `openclaw.json`, do not force the bridge.
+
+If the feature is enabled and Linux already has a working local binary, that is also acceptable. Use this skill when the enabled feature needs the Mac-owned implementation.
+
 ## Use This Skill For
 
 - same-LAN Linux gateway to Mac node setups
 - Mac-owned tools with macOS permissions or data access
 - wrapper-backed public skills that should stay truthful on Linux
+- enabled-channel auto-selection from `channels.*.enabled`
 - `remoteHost` auto-discovery from an existing OpenClaw config
 - optional Wake-on-LAN recovery when a Mac sleeps
 
@@ -50,7 +56,7 @@ Run:
 scripts/render-tool-map.sh /home/node/.openclaw/openclaw.json
 ```
 
-If the OpenClaw config already contains matching `remoteHost` entries, this prints an auto-discovered map first.
+If the OpenClaw config already contains enabled macOS-backed channels, this prints an auto-discovered map for enabled tools first.
 
 ### 2. Install The macOS Pack
 
@@ -59,14 +65,14 @@ Example:
 ```bash
 scripts/install-macos-pack.sh \
   --target-dir /home/node/.openclaw/bin \
-  --tool imsg \
-  --tool remindctl \
-  --tool memo \
   --openclaw-config /home/node/.openclaw/openclaw.json \
+  --default-host agent2@192.168.88.12 \
   --wake-map mac-node.local=AA:BB:CC:DD:EE:FF \
   --wake-wait 20 \
   --wake-retries 2
 ```
+
+When no `--tool` or `--map` arguments are provided, the installer now auto-selects only the supported tools whose channels are enabled in the OpenClaw config.
 
 The installer resolves hosts in this order:
 
@@ -81,8 +87,12 @@ The installer resolves hosts in this order:
 Run:
 
 ```bash
-scripts/verify-macos-pack.sh --target-dir /home/node/.openclaw/bin
+scripts/verify-macos-pack.sh \
+  --target-dir /home/node/.openclaw/bin \
+  --openclaw-config /home/node/.openclaw/openclaw.json
 ```
+
+When `--openclaw-config` is provided, verification only checks enabled macOS-backed features instead of treating every supported tool as required.
 
 ## Design Contract
 

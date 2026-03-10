@@ -138,6 +138,8 @@ def check_input_lengths(args) -> None:
 
 def require_entity(conn, table: str, entity_id: str, label: str = None) -> dict:
     """Validate entity exists by ID, return row as dict. Raises ValueError if not found."""
+    if not re.match(r'^[a-z][a-z0-9_]*$', table):
+        raise ValueError(f"Invalid table name: {table}")
     row = conn.execute(f"SELECT * FROM {table} WHERE id = ?", (entity_id,)).fetchone()
     if not row:
         raise ValueError(f"{label or table} {entity_id} not found")

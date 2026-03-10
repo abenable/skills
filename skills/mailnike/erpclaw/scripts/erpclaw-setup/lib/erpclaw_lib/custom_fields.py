@@ -8,6 +8,7 @@ Schema (from init_db.py):
     custom_field_value  — EAV store (table_name, doc_id, field_name, value)
 """
 import json
+import re
 import uuid
 
 
@@ -204,6 +205,8 @@ def validate_custom_field_values(conn, table_name, values):
                 options = json.loads(fdef["field_options"])
                 target_table = options.get("table")
                 if target_table:
+                    if not re.match(r'^[a-z][a-z0-9_]*$', target_table):
+                        raise ValueError(f"Invalid table name: {target_table}")
                     exists = conn.execute(
                         f"SELECT 1 FROM [{target_table}] WHERE id = ?",
                         (value,),

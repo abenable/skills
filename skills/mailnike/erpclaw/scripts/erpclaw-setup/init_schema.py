@@ -263,7 +263,7 @@ GL_TABLES = """
 CREATE TABLE IF NOT EXISTS account (
     id              TEXT PRIMARY KEY,
     name            TEXT NOT NULL,
-    account_number  TEXT UNIQUE,
+    account_number  TEXT,
     parent_id       TEXT REFERENCES account(id) ON DELETE RESTRICT,
     root_type       TEXT NOT NULL CHECK(root_type IN ('asset','liability','equity','income','expense')),
     account_type    TEXT CHECK(account_type IN (
@@ -287,7 +287,8 @@ CREATE TABLE IF NOT EXISTS account (
     lft             INTEGER,
     rgt             INTEGER,
     created_at      TEXT DEFAULT (datetime('now')),
-    updated_at      TEXT DEFAULT (datetime('now'))
+    updated_at      TEXT DEFAULT (datetime('now')),
+    UNIQUE(account_number, company_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_account_company ON account(company_id);
@@ -3576,6 +3577,53 @@ CREATE TABLE IF NOT EXISTS account_type_registry (
 """
 
 
+# ---------------------------------------------------------------------------
+# SKILL: erpclaw-modules (Module Installer System)
+# Tables: erpclaw_module, erpclaw_module_action
+# ---------------------------------------------------------------------------
+
+MODULE_TABLES = """
+-- =========================================================================
+-- SKILL: erpclaw-modules (Module Installer System)
+-- =========================================================================
+
+CREATE TABLE IF NOT EXISTS erpclaw_module (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL UNIQUE,
+    display_name    TEXT NOT NULL,
+    version         TEXT NOT NULL DEFAULT '0.0.0',
+    category        TEXT NOT NULL DEFAULT 'expansion'
+                    CHECK(category IN ('core','expansion','infrastructure','vertical','sub-vertical','regional')),
+    github_repo     TEXT NOT NULL DEFAULT '',
+    install_path    TEXT NOT NULL DEFAULT '',
+    installed_at    TEXT DEFAULT (datetime('now')),
+    updated_at      TEXT DEFAULT (datetime('now')),
+    install_status  TEXT NOT NULL DEFAULT 'pending'
+                    CHECK(install_status IN ('pending','updating','installed','failed','removing')),
+    git_commit      TEXT,
+    tables_created  INTEGER NOT NULL DEFAULT 0,
+    action_count    INTEGER NOT NULL DEFAULT 0,
+    is_active       INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
+    requires_json   TEXT NOT NULL DEFAULT '[]',
+    error_log       TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_erpclaw_module_name ON erpclaw_module(name);
+CREATE INDEX IF NOT EXISTS idx_erpclaw_module_category ON erpclaw_module(category);
+CREATE INDEX IF NOT EXISTS idx_erpclaw_module_status ON erpclaw_module(install_status);
+
+CREATE TABLE IF NOT EXISTS erpclaw_module_action (
+    module_name     TEXT NOT NULL,
+    action_name     TEXT NOT NULL,
+    PRIMARY KEY (module_name, action_name),
+    FOREIGN KEY (module_name) REFERENCES erpclaw_module(name) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_erpclaw_module_action_action ON erpclaw_module_action(action_name);
+CREATE INDEX IF NOT EXISTS idx_erpclaw_module_action_module ON erpclaw_module_action(module_name);
+"""
+
+
 # ===========================================================================
 # DATABASE INITIALIZATION
 # ===========================================================================
@@ -3604,6 +3652,7 @@ ALL_DDL_BLOCKS = [
     ("erpclaw-integrations",   STRIPE_TABLES),
     ("erpclaw-integrations",   S3_TABLES),
     ("erpclaw-registries",     REGISTRY_TABLES),
+    ("erpclaw-modules",        MODULE_TABLES),
 ]
 
 

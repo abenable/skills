@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
-"""ERPClaw v2 — Unified router for 269 actions across 10 domains.
+"""ERPClaw v3 — Unified router for 365+ actions across 14 domains.
 
 Routes --action to the correct domain script via os.execvp().
-Each domain script is the original skill's db_query.py, unmodified except
-for path adjustments to find assets in the new directory layout.
+Three dispatch tiers:
+  1. ALIASES — action name remapping before forwarding
+  2. ACTION_MAP — static 315-action map for core domains
+  3. MODULE_ACTIONS — dynamic lookup in erpclaw_module_action table
+     for installed expansion modules (~/.openclaw/erpclaw/modules/)
 
 Usage: python3 db_query.py --action <action-name> [--flags ...]
 Output: JSON to stdout (passed through from domain script)
 """
 import json
 import os
+import sqlite3
 import sys
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODULES_DIR = os.path.expanduser("~/.openclaw/erpclaw/modules")
+DB_PATH = os.path.expanduser("~/.openclaw/erpclaw/data.sqlite")
 
-# Action → domain mapping (269 unique actions + aliases)
+# Action → domain mapping (365 core entries + aliases + 10 module mgmt)
 # Collisions resolved: status→setup, recurring-template→journals,
 # update-invoice-outstanding→selling. Aliases added for alternate domains.
 ACTION_MAP = {
@@ -315,6 +321,115 @@ ACTION_MAP = {
     "add-prepaid-credit": "erpclaw-billing",
     "get-prepaid-balance": "erpclaw-billing",
     "billing-status": "erpclaw-billing",
+
+    # === Advanced Accounting — Revenue Recognition / ASC 606 (14 actions) ===
+    "add-revenue-contract": "erpclaw-accounting-adv",
+    "update-revenue-contract": "erpclaw-accounting-adv",
+    "get-revenue-contract": "erpclaw-accounting-adv",
+    "list-revenue-contracts": "erpclaw-accounting-adv",
+    "add-performance-obligation": "erpclaw-accounting-adv",
+    "list-performance-obligations": "erpclaw-accounting-adv",
+    "satisfy-performance-obligation": "erpclaw-accounting-adv",
+    "add-variable-consideration": "erpclaw-accounting-adv",
+    "list-variable-considerations": "erpclaw-accounting-adv",
+    "modify-contract": "erpclaw-accounting-adv",
+    "calculate-revenue-schedule": "erpclaw-accounting-adv",
+    "generate-revenue-entries": "erpclaw-accounting-adv",
+    "revenue-waterfall-report": "erpclaw-accounting-adv",
+    "revenue-recognition-summary": "erpclaw-accounting-adv",
+
+    # === Advanced Accounting — Lease Accounting / ASC 842 (12 actions) ===
+    "add-lease": "erpclaw-accounting-adv",
+    "update-lease": "erpclaw-accounting-adv",
+    "get-lease": "erpclaw-accounting-adv",
+    "list-leases": "erpclaw-accounting-adv",
+    "classify-lease": "erpclaw-accounting-adv",
+    "calculate-rou-asset": "erpclaw-accounting-adv",
+    "calculate-lease-liability": "erpclaw-accounting-adv",
+    "generate-amortization-schedule": "erpclaw-accounting-adv",
+    "record-lease-payment": "erpclaw-accounting-adv",
+    "lease-maturity-report": "erpclaw-accounting-adv",
+    "lease-disclosure-report": "erpclaw-accounting-adv",
+    "lease-summary": "erpclaw-accounting-adv",
+
+    # === Advanced Accounting — Intercompany Transactions (10 actions) ===
+    "add-ic-transaction": "erpclaw-accounting-adv",
+    "update-ic-transaction": "erpclaw-accounting-adv",
+    "get-ic-transaction": "erpclaw-accounting-adv",
+    "list-ic-transactions": "erpclaw-accounting-adv",
+    "approve-ic-transaction": "erpclaw-accounting-adv",
+    "post-ic-transaction": "erpclaw-accounting-adv",
+    "add-transfer-price-rule": "erpclaw-accounting-adv",
+    "list-transfer-price-rules": "erpclaw-accounting-adv",
+    "ic-reconciliation-report": "erpclaw-accounting-adv",
+    "ic-elimination-report": "erpclaw-accounting-adv",
+
+    # === Advanced Accounting — Multi-Entity Consolidation (8 actions) ===
+    "add-consolidation-group": "erpclaw-accounting-adv",
+    "list-consolidation-groups": "erpclaw-accounting-adv",
+    "add-group-entity": "erpclaw-accounting-adv",
+    "run-consolidation": "erpclaw-accounting-adv",
+    "generate-elimination-entries": "erpclaw-accounting-adv",
+    "add-currency-translation": "erpclaw-accounting-adv",
+    "consolidation-trial-balance-report": "erpclaw-accounting-adv",
+    "consolidation-summary": "erpclaw-accounting-adv",
+
+    # === Advanced Accounting — Reports (1 action) ===
+    "standards-compliance-dashboard": "erpclaw-accounting-adv",
+
+    # === HR — Employee Management (28 actions) ===
+    "add-employee": "erpclaw-hr",
+    "update-employee": "erpclaw-hr",
+    "get-employee": "erpclaw-hr",
+    "list-employees": "erpclaw-hr",
+    "add-department": "erpclaw-hr",
+    "list-departments": "erpclaw-hr",
+    "add-designation": "erpclaw-hr",
+    "list-designations": "erpclaw-hr",
+    "add-leave-type": "erpclaw-hr",
+    "list-leave-types": "erpclaw-hr",
+    "add-leave-allocation": "erpclaw-hr",
+    "get-leave-balance": "erpclaw-hr",
+    "add-leave-application": "erpclaw-hr",
+    "approve-leave": "erpclaw-hr",
+    "reject-leave": "erpclaw-hr",
+    "list-leave-applications": "erpclaw-hr",
+    "mark-attendance": "erpclaw-hr",
+    "bulk-mark-attendance": "erpclaw-hr",
+    "list-attendance": "erpclaw-hr",
+    "add-holiday-list": "erpclaw-hr",
+    "add-expense-claim": "erpclaw-hr",
+    "submit-expense-claim": "erpclaw-hr",
+    "approve-expense-claim": "erpclaw-hr",
+    "reject-expense-claim": "erpclaw-hr",
+    "update-expense-claim-status": "erpclaw-hr",
+    "list-expense-claims": "erpclaw-hr",
+    "record-lifecycle-event": "erpclaw-hr",
+    "hr-status": "erpclaw-hr",
+
+    # === Payroll — US Payroll Processing (22 actions) ===
+    "add-salary-component": "erpclaw-payroll",
+    "list-salary-components": "erpclaw-payroll",
+    "add-salary-structure": "erpclaw-payroll",
+    "get-salary-structure": "erpclaw-payroll",
+    "list-salary-structures": "erpclaw-payroll",
+    "add-salary-assignment": "erpclaw-payroll",
+    "list-salary-assignments": "erpclaw-payroll",
+    "add-income-tax-slab": "erpclaw-payroll",
+    "update-fica-config": "erpclaw-payroll",
+    "update-futa-suta-config": "erpclaw-payroll",
+    "create-payroll-run": "erpclaw-payroll",
+    "generate-salary-slips": "erpclaw-payroll",
+    "get-salary-slip": "erpclaw-payroll",
+    "list-salary-slips": "erpclaw-payroll",
+    "submit-payroll-run": "erpclaw-payroll",
+    "cancel-payroll-run": "erpclaw-payroll",
+    "generate-w2-data": "erpclaw-payroll",
+    "add-garnishment": "erpclaw-payroll",
+    "update-garnishment": "erpclaw-payroll",
+    "list-garnishments": "erpclaw-payroll",
+    "get-garnishment": "erpclaw-payroll",
+    "payroll-status": "erpclaw-payroll",
 }
 
 # Aliases: actions that need to be forwarded with a different --action name
@@ -330,12 +445,27 @@ ALIASES = {
     "buying-status": ("erpclaw-buying", "status"),
     "inventory-status": ("erpclaw-inventory", "status"),
     "billing-status": ("erpclaw-billing", "status"),
+    "accounting-adv-status": ("erpclaw-accounting-adv", "status"),
     # Selling recurring template aliases (journals owns the base names)
     "add-recurring-invoice-template": ("erpclaw-selling", "add-recurring-template"),
     "update-recurring-invoice-template": ("erpclaw-selling", "update-recurring-template"),
     "list-recurring-invoice-templates": ("erpclaw-selling", "list-recurring-templates"),
     # Buying outstanding alias (selling owns the base name)
     "update-purchase-outstanding": ("erpclaw-buying", "update-invoice-outstanding"),
+}
+
+
+# ---------------------------------------------------------------------------
+# Module management actions — forwarded to module_manager.py / onboarding.py
+# ---------------------------------------------------------------------------
+MODULE_ACTIONS = {
+    "install-module", "remove-module", "update-modules",
+    "list-modules", "available-modules", "module-status",
+    "search-modules", "rebuild-action-cache",
+}
+
+ONBOARDING_ACTIONS = {
+    "list-profiles", "onboard",
 }
 
 
@@ -369,6 +499,72 @@ def forward(domain, action_override=None):
     os.execvp(sys.executable, [sys.executable, script] + args)
 
 
+def forward_script(script_path):
+    """Forward execution to a standalone script (module_manager, onboarding)."""
+    if not os.path.isfile(script_path):
+        print(json.dumps({
+            "status": "error",
+            "error": f"Script not found: {script_path}"
+        }))
+        sys.exit(1)
+
+    args = list(sys.argv[1:])
+    os.execvp(sys.executable, [sys.executable, script_path] + args)
+
+
+def forward_module(module_name, action_override=None):
+    """Forward execution to an installed module's db_query.py."""
+    script = os.path.join(MODULES_DIR, module_name, "scripts", "db_query.py")
+    if not os.path.isfile(script):
+        print(json.dumps({
+            "status": "error",
+            "error": f"Module script not found: {module_name}/scripts/db_query.py",
+            "hint": f"Try: --action module-status --module-name {module_name}"
+        }))
+        sys.exit(1)
+
+    args = list(sys.argv[1:])
+
+    if action_override:
+        for i, arg in enumerate(args):
+            if arg == "--action" and i + 1 < len(args):
+                args[i + 1] = action_override
+                break
+
+    os.execvp(sys.executable, [sys.executable, script] + args)
+
+
+def lookup_module_for_action(action):
+    """Query erpclaw_module_action table to find which module owns this action.
+
+    Returns the module_name if found, None otherwise.
+    Uses a direct sqlite3 connection (not shared lib) to avoid import overhead.
+    """
+    if not os.path.isfile(DB_PATH):
+        return None
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            """SELECT ma.module_name
+               FROM erpclaw_module_action ma
+               JOIN erpclaw_module m ON m.name = ma.module_name
+               WHERE ma.action_name = ?
+                 AND m.install_status = 'installed'
+                 AND m.is_active = 1
+               LIMIT 1""",
+            (action,)
+        ).fetchone()
+        conn.close()
+        if row:
+            return row["module_name"]
+    except (sqlite3.OperationalError, sqlite3.DatabaseError):
+        # Table doesn't exist yet or DB issue — fall through
+        pass
+    return None
+
+
 def main():
     action = find_action()
     if not action:
@@ -378,23 +574,41 @@ def main():
         }))
         sys.exit(1)
 
-    # Check aliases first (need to override action name)
+    # Tier 0: Module management actions → module_manager.py
+    if action in MODULE_ACTIONS:
+        forward_script(os.path.join(BASE_DIR, "module_manager.py"))
+        return
+
+    # Tier 0: Onboarding actions → onboarding.py
+    if action in ONBOARDING_ACTIONS:
+        forward_script(os.path.join(BASE_DIR, "onboarding.py"))
+        return
+
+    # Tier 1: Check aliases (need to override action name)
     if action in ALIASES:
         domain, original_action = ALIASES[action]
         forward(domain, action_override=original_action)
         return
 
-    # Check direct mapping
+    # Tier 2: Check static core action map
     domain = ACTION_MAP.get(action)
-    if not domain:
-        print(json.dumps({
-            "status": "error",
-            "error": f"Unknown action: {action}",
-            "hint": "Run --action status for system overview"
-        }))
-        sys.exit(1)
+    if domain:
+        forward(domain)
+        return
 
-    forward(domain)
+    # Tier 3: Dynamic lookup — check installed modules
+    module_name = lookup_module_for_action(action)
+    if module_name:
+        forward_module(module_name)
+        return
+
+    # Unknown action
+    print(json.dumps({
+        "status": "error",
+        "error": f"Unknown action: {action}",
+        "hint": "Run --action status for system overview, or --action available-modules to browse installable modules"
+    }))
+    sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -458,9 +458,8 @@ def seed_demo_data(args):
         v2_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", skill_name, "db_query.py")
         if os.path.isfile(v2_path):
             return os.path.abspath(v2_path)
-        # Also check v2 sibling packages (erpclaw-people, erpclaw-ops, erpclaw-growth)
+        # Also check v2 sibling packages (erpclaw-ops, erpclaw-growth)
         v2_skill_map = {
-            "erpclaw-hr": "erpclaw-people", "erpclaw-payroll": "erpclaw-people",
             "erpclaw-manufacturing": "erpclaw-ops", "erpclaw-projects": "erpclaw-ops",
             "erpclaw-assets": "erpclaw-ops", "erpclaw-quality": "erpclaw-ops",
             "erpclaw-support": "erpclaw-ops",

@@ -10,9 +10,12 @@ Functions:
 """
 import csv
 import os
+import re
 import uuid
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+
+_SAFE_NAME = re.compile(r'^[a-z][a-z0-9_]*$')
 
 
 # ---------------------------------------------------------------------------
@@ -158,6 +161,12 @@ def bulk_insert(conn, table, columns, rows, batch_size=100,
 
     if generate_ids and id_column not in columns:
         columns = [id_column] + list(columns)
+
+    if not _SAFE_NAME.match(table):
+        raise ValueError(f"Invalid table name: {table}")
+    for col in columns:
+        if not _SAFE_NAME.match(col):
+            raise ValueError(f"Invalid column name: {col}")
 
     placeholders = ", ".join(["?"] * len(columns))
     col_names = ", ".join(columns)

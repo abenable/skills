@@ -15457,9 +15457,138 @@ var Notes = {
     return { success: true, id };
   }
 };
+var SEARCH_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "document",
+  "doc",
+  "file",
+  "files",
+  "find",
+  "for",
+  "in",
+  "is",
+  "me",
+  "my",
+  "of",
+  "please",
+  "show",
+  "the",
+  "to"
+]);
+function normalizeSearchText(value) {
+  return String(value ?? "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+function extractSearchTokens(query) {
+  const normalized = normalizeSearchText(query);
+  if (!normalized) return [];
+  return normalized.split(" ").map((t) => t.trim()).filter((t) => t.length >= 2 && !SEARCH_STOP_WORDS.has(t));
+}
+function buildSearchQueryVariants(rawQuery) {
+  const direct = ensureNonEmptyString(rawQuery, "Search query");
+  const normalized = normalizeSearchText(direct);
+  const tokens = extractSearchTokens(direct);
+  const tokenPhrase = tokens.join(" ");
+  const variants = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const candidate of [direct, normalized, tokenPhrase]) {
+    const cleaned = String(candidate ?? "").trim();
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    variants.push(cleaned);
+  }
+  return variants;
+}
+function parseDavFileResponses(response) {
+  if (!response?.["d:multistatus"] || !response["d:multistatus"]["d:response"]) return [];
+  const responses = ensureArray(response["d:multistatus"]["d:response"]);
+  return responses.map((r) => {
+    const href = r["d:href"];
+    const propstats = ensureArray(r["d:propstat"]);
+    if (!propstats[0] || !propstats[0]["d:prop"]) return null;
+    const props = propstats[0]["d:prop"];
+    const isDir = props["d:resourcetype"] && props["d:resourcetype"]["d:collection"] !== void 0;
+    const fallbackName = decodeURIComponent(String(href || "").split("/").filter((p) => p).pop() || "");
+    return {
+      name: props["d:displayname"] || fallbackName,
+      path: toUserPathFromDavHref(href),
+      davHref: href,
+      isDir,
+      size: props["d:getcontentlength"],
+      lastModified: props["d:getlastmodified"]
+    };
+  }).filter((f) => f);
+}
+function rankFileSearchResults(items, rawQuery) {
+  const queryNorm = normalizeSearchText(rawQuery);
+  const tokens = extractSearchTokens(rawQuery);
+  const ranked = [];
+  const seenPaths = /* @__PURE__ */ new Set();
+  for (const item of items) {
+    if (!item || !item.path) continue;
+    const pathKey = String(item.path).toLowerCase();
+    if (seenPaths.has(pathKey)) continue;
+    seenPaths.add(pathKey);
+    const nameNorm = normalizeSearchText(item.name || "");
+    const pathNorm = normalizeSearchText(decodeURIComponent(item.path || ""));
+    let score = 0;
+    if (queryNorm && nameNorm === queryNorm) score += 120;
+    if (queryNorm && nameNorm.includes(queryNorm)) score += 70;
+    if (queryNorm && pathNorm.includes(queryNorm)) score += 45;
+    if (tokens.length > 0) {
+      let matched = 0;
+      for (const token of tokens) {
+        if (nameNorm.includes(token)) {
+          score += 22;
+          matched++;
+        } else if (pathNorm.includes(token)) {
+          score += 10;
+          matched++;
+        }
+      }
+      if (matched === tokens.length) score += 25;
+    }
+    if (score > 0 || items.length === 1) {
+      ranked.push({
+        ...item,
+        relevanceScore: score
+      });
+    }
+  }
+  ranked.sort((a, b) => b.relevanceScore - a.relevanceScore || String(a.name || "").localeCompare(String(b.name || "")));
+  return ranked;
+}
+function normalizeDavFilePathInput(filePath, fieldName = "File path") {
+  const raw = ensureNonEmptyString(filePath, fieldName);
+  let candidate = raw.trim();
+  if (/^https?:\/\//i.test(candidate)) {
+    try {
+      candidate = new URL(candidate).pathname;
+    } catch (_error) {
+    }
+  }
+  const expectedPrefix = `/remote.php/dav/files/${CONFIG.user}/`;
+  const prefixIndex = candidate.indexOf(expectedPrefix);
+  if (prefixIndex !== -1) {
+    candidate = candidate.slice(prefixIndex + expectedPrefix.length);
+  }
+  candidate = candidate.replace(/^\/+/, "");
+  if (!candidate) throw new Error(`${fieldName} is required.`);
+  return candidate;
+}
+function toUserPathFromDavHref(href) {
+  const expectedPrefix = `/remote.php/dav/files/${CONFIG.user}/`;
+  const rawHref = String(href || "");
+  const normalized = rawHref.startsWith(expectedPrefix) ? rawHref.slice(expectedPrefix.length) : rawHref.replace(/^\/+/, "");
+  const decoded = decodeURIComponent(normalized);
+  return decoded.startsWith("/") ? decoded : `/${decoded}`;
+}
 var Files = {
   async list(dirPath = "/") {
-    const cleanPath = dirPath.startsWith("/") ? dirPath.slice(1) : dirPath;
+    const cleanPath = dirPath === "/" ? "" : normalizeDavFilePathInput(dirPath, "Directory path");
     const endpoint = `/remote.php/dav/files/${CONFIG.user}/${cleanPath}`;
     const response = await request(endpoint, {
       method: "PROPFIND",
@@ -15484,7 +15613,8 @@ var Files = {
       }
       return {
         name,
-        path: href,
+        path: toUserPathFromDavHref(href),
+        davHref: href,
         isDir,
         size: props["d:getcontentlength"],
         lastModified: props["d:getlastmodified"]
@@ -15492,8 +15622,7 @@ var Files = {
     }).filter((f) => f);
   },
   async upload(filePath, content) {
-    if (!filePath || String(filePath).trim() === "") throw new Error("File path is required.");
-    const cleanPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
+    const cleanPath = normalizeDavFilePathInput(filePath, "File path");
     const endpoint = `/remote.php/dav/files/${CONFIG.user}/${cleanPath}`;
     await request(endpoint, {
       method: "PUT",
@@ -15506,8 +15635,7 @@ var Files = {
     return { path: filePath, status: "uploaded", size: content.length };
   },
   async get(filePath) {
-    if (!filePath || String(filePath).trim() === "") throw new Error("File path is required.");
-    const cleanPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
+    const cleanPath = normalizeDavFilePathInput(filePath, "File path");
     const endpoint = `/remote.php/dav/files/${CONFIG.user}/${cleanPath}`;
     const response = await fetch(`${CONFIG.url}${endpoint}`, {
       method: "GET",
@@ -15522,8 +15650,7 @@ var Files = {
     return { path: filePath, content, size: content.length };
   },
   async delete(filePath) {
-    if (!filePath || String(filePath).trim() === "") throw new Error("File path is required.");
-    const cleanPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
+    const cleanPath = normalizeDavFilePathInput(filePath, "File path");
     const endpoint = `/remote.php/dav/files/${CONFIG.user}/${cleanPath}`;
     await request(endpoint, {
       method: "DELETE"
@@ -15532,9 +15659,11 @@ var Files = {
   },
   async search(query) {
     const rawQuery = ensureNonEmptyString(query, "Search query");
-    const safeQuery = escapeXml(rawQuery);
+    const queryVariants = buildSearchQueryVariants(rawQuery);
     const endpoint = `/remote.php/dav/files/${CONFIG.user}/`;
-    const body = `
+    const buildSearchBody = (term) => {
+      const safeTerm = escapeXml(term);
+      return `
             <d:searchrequest xmlns:d="DAV:">
                 <d:basicsearch>
                     <d:select>
@@ -15556,39 +15685,14 @@ var Files = {
                             <d:prop>
                                 <d:displayname/>
                             </d:prop>
-                            <d:literal>%${safeQuery}%</d:literal>
+                            <d:literal>%${safeTerm}%</d:literal>
                         </d:like>
                     </d:where>
                 </d:basicsearch>
             </d:searchrequest>
         `;
-    try {
-      const response = await request(endpoint, {
-        method: "SEARCH",
-        headers: { "Content-Type": "application/xml" },
-        body
-      });
-      if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) return [];
-      const responses = ensureArray(response["d:multistatus"]["d:response"]);
-      return responses.map((r) => {
-        const href = r["d:href"];
-        const propstats = ensureArray(r["d:propstat"]);
-        if (!propstats[0] || !propstats[0]["d:prop"]) return null;
-        const props = propstats[0]["d:prop"];
-        const isDir = props["d:resourcetype"] && props["d:resourcetype"]["d:collection"] !== void 0;
-        return {
-          name: props["d:displayname"] || decodeURIComponent(href.split("/").pop()),
-          path: href,
-          isDir,
-          size: props["d:getcontentlength"],
-          lastModified: props["d:getlastmodified"]
-        };
-      }).filter((f) => f);
-    } catch (error) {
-      if (!String(error.message || "").includes("HTTP 501")) {
-        throw error;
-      }
-      const fallbackBody = `
+    };
+    const fallbackBody = `
                 <d:propfind xmlns:d="DAV:">
                     <d:prop>
                         <d:getlastmodified/>
@@ -15598,6 +15702,7 @@ var Files = {
                     </d:prop>
                 </d:propfind>
             `;
+    const runFallbackScan = async () => {
       const response = await request(endpoint, {
         method: "PROPFIND",
         headers: {
@@ -15606,24 +15711,27 @@ var Files = {
         },
         body: fallbackBody
       });
-      if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) return [];
-      const q = rawQuery.toLowerCase();
-      const responses = ensureArray(response["d:multistatus"]["d:response"]);
-      return responses.map((r) => {
-        const href = r["d:href"];
-        const propstats = ensureArray(r["d:propstat"]);
-        if (!propstats[0] || !propstats[0]["d:prop"]) return null;
-        const props = propstats[0]["d:prop"];
-        const isDir = props["d:resourcetype"] && props["d:resourcetype"]["d:collection"] !== void 0;
-        const name = props["d:displayname"] || decodeURIComponent(href.split("/").pop());
-        return {
-          name,
-          path: href,
-          isDir,
-          size: props["d:getcontentlength"],
-          lastModified: props["d:getlastmodified"]
-        };
-      }).filter((item) => item && String(item.name || "").toLowerCase().includes(q));
+      const candidates = parseDavFileResponses(response);
+      return rankFileSearchResults(candidates, rawQuery);
+    };
+    try {
+      let serverCandidates = [];
+      for (const term of queryVariants) {
+        const response = await request(endpoint, {
+          method: "SEARCH",
+          headers: { "Content-Type": "application/xml" },
+          body: buildSearchBody(term)
+        });
+        serverCandidates = serverCandidates.concat(parseDavFileResponses(response));
+      }
+      const ranked = rankFileSearchResults(serverCandidates, rawQuery);
+      if (ranked.length > 0) return ranked;
+      return await runFallbackScan();
+    } catch (error) {
+      if (!String(error.message || "").includes("HTTP 501")) {
+        throw error;
+      }
+      return await runFallbackScan();
     }
   }
 };

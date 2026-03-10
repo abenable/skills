@@ -75,7 +75,7 @@ Before first execution in any new environment:
 
 ## Bundled Script Review Checklist (Before First Use)
 
-The skill ships executable JavaScript at `scripts/nextcloud.js`. Review before running in new environments:
+The skill ships two scripts: `scripts/nextcloud.js` (Node.js, text operations) and `scripts/files_binary.py` (Python 3, binary file transfers). Review both before running in new environments:
 
 1. Confirm runtime requirements:
    - `node --version` (must be `20+`)
@@ -98,6 +98,12 @@ Quick grep-style checks on `scripts/nextcloud.js` should currently show:
 - Config is read from `process.env.NEXTCLOUD_URL|USER|TOKEN|TIMEZONE`.
 - Request path is built as `${CONFIG.url}${endpoint}` and uses `fetch(...)`.
 - No obvious `child_process` or `fs` usage in the bundle entry path.
+
+Quick checks on `scripts/files_binary.py`:
+
+- Config is read from `os.environ.get("NEXTCLOUD_URL|USER|TOKEN")`.
+- DAV URL is built as `{url}/remote.php/dav/files/{user}/{path}`.
+- Uses only stdlib (`urllib`, `base64`, `xml.etree`); no third-party deps.
 
 This is not a full security audit. Re-run checks after every bundle update.
 
@@ -137,12 +143,34 @@ Important:
 ### Calendar Discovery
 - `calendars list [--type <tasks|events>]`
 
-### Files
+### Files (text)
 - `files list [--path <path>]`
-- `files search --query <query>`
-- `files get --path <path>`
+- `files search --query <query>` (supports natural-language input; ranks by filename/path token relevance)
+- `files get --path <path>` (accepts relative user path or full DAV href)
 - `files upload --path <path> --content <content>`
 - `files delete --path <path>`
+
+### Files (binary) — ODT, DOCX, PDF, images, etc.
+
+`nextcloud.js` passes file content as text strings, which corrupts binary formats.
+Use the companion Python script for any binary file:
+
+```bash
+python3 scripts/files_binary.py download <nc_path> <local_path>
+python3 scripts/files_binary.py upload   <local_path> <nc_path>
+python3 scripts/files_binary.py exists   <nc_path>
+python3 scripts/files_binary.py list     [<nc_path>]
+```
+
+Reads the same `NEXTCLOUD_URL`, `NEXTCLOUD_USER`, `NEXTCLOUD_TOKEN` env vars.
+Auto-detects MIME type from file extension (ODT, DOCX, XLSX, PDF, PNG, JPG, and more).
+
+**When to use which:**
+
+| Situation | Command |
+|-----------|---------|
+| Plain text files (`.md`, `.txt`, `.csv`) | `node scripts/nextcloud.js files get/upload` |
+| Binary files (`.odt`, `.docx`, `.pdf`, images) | `python3 scripts/files_binary.py download/upload` |
 
 ### Contacts
 - `contacts list [--addressbook <name>]`
@@ -293,9 +321,12 @@ Use this when user asks for appointment details, address, or "what is my appoint
 
 ### Files
 1. Require explicit file path for mutating operations.
-2. Use deterministic test paths for temporary validation files.
-3. Read back uploaded content and then delete test files.
-4. On large instances, prefer narrower path-based listing before broad search to reduce load.
+2. `files get/upload/delete` accept either a relative user path (for example `/Share-Family/file.docx`) or a full DAV href returned by search.
+3. For binary files (ODT, DOCX, PDF, images), use `python3 scripts/files_binary.py` — never pass binary content through `nextcloud.js files upload`.
+4. Use deterministic test paths for temporary validation files.
+5. Read back uploaded content and then delete test files.
+6. Use `files search` with user phrasing directly; it auto-normalizes query text and ranks likely matches.
+7. On large instances, prefer narrower path-based listing before broad search to reduce load.
 
 ### Notes
 1. Create with explicit title/content.

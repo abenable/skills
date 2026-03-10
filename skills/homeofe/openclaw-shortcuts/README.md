@@ -1,68 +1,83 @@
 # openclaw-shortcuts
 
-Enhanced `/shortcuts` and `/projects` commands for OpenClaw.
+> OpenClaw plugin providing a config-driven `/shortcuts` command with safe placeholder defaults.
 
-## Commands
+**Current version:** `0.1.0`
 
-| Command | Description |
-|---------|-------------|
-| `/shortcuts` | Show local shortcuts and helper commands (config-driven, generic by default) |
-| `/projects` | List all local git repos in the workspace with version and GitHub visibility |
+> **Replaces:** `openclaw-help` (deprecated — name was misleading; plugin never registered `/help` but `/shortcuts`)
 
-## Security note
+---
 
-This plugin is intentionally **generic by default**. Do not hardcode personal commands, group names, phone numbers, or private workflow details into the repository.
+## What it does
 
-Instead, customize the output via plugin config.
+Registers `/shortcuts` in your OpenClaw agent.
 
-## Install (dev)
+Prints:
+- Generic placeholder sections by default
+- Custom sections injected via local `openclaw.json` config
 
-```bash
-openclaw plugins install -l ~/.openclaw/workspace/openclaw-shortcuts
-openclaw gateway restart
-```
+**Security design:** The repo ships with placeholder-only content. All personal shortcuts, project names, and command mappings live in your local config — never in the repo.
 
-## ClawHub
+---
+
+## Install
 
 ```bash
 clawhub install openclaw-shortcuts
 ```
 
+Or local development:
+```bash
+openclaw plugins install -l ~/.openclaw/workspace/skills/openclaw-shortcuts
+openclaw gateway restart
+```
+
+---
+
 ## Configure
 
-The repo stays placeholder-only. You customize `/shortcuts` locally via plugin config.
+In `~/.openclaw/openclaw.json` → `plugins.entries.openclaw-shortcuts.config`:
 
-Example (using **public** projects as references):
-
-```json
+```json5
 {
-  "plugins": {
-    "entries": {
-      "openclaw-shortcuts": {
-        "enabled": true,
-        "config": {
-          "includeTips": true,
-          "sections": [
-            {
-              "title": "Public example projects",
-              "lines": [
-                "- AAHP - protocol + handoff structure example",
-                "- BMAS - research project example"
-              ]
-            },
-            {
-              "title": "Your shortcuts (fill in locally)",
-              "lines": [
-                "- /<project> - your project shortcut",
-                "- /<command> - your custom command"
-              ]
-            }
-          ]
-        }
-      }
+  "enabled": true,
+  "includeTips": false,
+  "sections": [
+    {
+      "title": "📁 Projects",
+      "lines": [
+        "/<project>   - Your project shortcut"
+      ]
+    },
+    {
+      "title": "🛠 Tools",
+      "lines": [
+        "/<command>   - Your custom command"
+      ]
     }
-  }
+  ]
 }
 ```
 
-Security reminder: keep private commands, phone numbers, group IDs, tokens, and internal workflows out of the repo. Store them only in local config.
+---
+
+## OPSEC rule
+
+- Never put personal commands, phone numbers, group IDs, tokens, or internal workflows into this repo
+- Keep all real shortcuts in local config only
+
+---
+
+## Changelog
+
+### v0.1.0
+- Initial release (merged from deprecated `openclaw-help`)
+- Registers `/shortcuts` with `requireAuth: false`
+- Config-driven sections via `openclaw.json`
+- Safe placeholder defaults
+
+---
+
+## License
+
+MIT

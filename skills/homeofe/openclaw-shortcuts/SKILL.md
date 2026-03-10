@@ -1,72 +1,34 @@
 ---
 name: openclaw-shortcuts
-description: OpenClaw plugin providing a config-driven /help command (safe placeholder-only defaults).
+description: OpenClaw plugin providing a config-driven /shortcuts command with safe placeholder defaults. Use when you want a /shortcuts command that lists your local commands and project shortcuts without leaking private info to public repos.
 ---
 
 # openclaw-shortcuts
 
-Adds a `/shortcuts` command to your OpenClaw agent.
-
-The key design goal is **safety for public repos**: the plugin ships with **generic placeholder help text**. You inject your real shortcuts locally via config (e.g., in `~/.openclaw/openclaw.json`).
+Registers `/shortcuts` in your OpenClaw agent.
 
 ## What it does
 
-- Registers `/shortcuts`
-- Prints:
-  - generic default sections (Shortcuts / Memory / TODO)
-  - optional tips
-  - optional custom sections from config
-
-## Why this exists
-
-People tend to hardcode personal commands, phone numbers, group IDs, and internal workflow notes into README files. If you publish plugins to GitHub/ClawHub, that can leak private info.
-
-This plugin avoids that by:
-
-- keeping the repository content placeholder-only
-- moving the real, personal mapping into local config
-
-## Install
-
-From ClawHub:
-
-```bash
-clawhub install openclaw-shortcuts
-```
-
-For local development:
-
-```bash
-openclaw plugins install -l ~/.openclaw/workspace/openclaw-help
-openclaw gateway restart
-```
+- `/shortcuts` → prints configured sections (projects, commands, model switching, etc.)
+- Ships with generic placeholder defaults — real shortcuts stay in local config
+- `requireAuth: false` — gateway `commands.allowFrom` handles authorization
 
 ## Configure
 
-Example config (safe, generic):
+Inject your shortcuts via `openclaw.json`:
 
-```json
+```json5
 {
   "plugins": {
     "entries": {
-      "openclaw-help": {
+      "openclaw-shortcuts": {
         "enabled": true,
         "config": {
-          "includeTips": true,
+          "includeTips": false,
           "sections": [
             {
-              "title": "Public example projects",
-              "lines": [
-                "- AAHP - protocol + handoff structure example",
-                "- BMAS - research project example"
-              ]
-            },
-            {
-              "title": "Your shortcuts (fill in locally)",
-              "lines": [
-                "- /<project> - your project shortcut",
-                "- /<command> - your custom command"
-              ]
+              "title": "📁 Projects",
+              "lines": ["/myproject   - My project shortcut"]
             }
           ]
         }
@@ -76,7 +38,8 @@ Example config (safe, generic):
 }
 ```
 
-## OPSEC rule
+## OPSEC
 
-- Never put private commands, phone numbers, group IDs, tokens, domains, or internal workflows into this repo.
-- Keep that data in local config only.
+Never commit personal shortcuts to the repo. Local config only.
+
+**Version:** 0.1.0

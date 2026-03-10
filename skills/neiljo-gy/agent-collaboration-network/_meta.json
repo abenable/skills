@@ -3,11 +3,16 @@
   "slug": "agent-collaboration-network",
   "displayName": "acn",
   "latest": {
-    "version": "0.4.0",
-    "publishedAt": 1772452891939,
-    "commit": "https://github.com/openclaw/skills/commit/951c5bde367b9fc244c1edeb7fddd409ab3bdb11"
+    "version": "0.4.5",
+    "publishedAt": 1773121976619,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.4.0",
+      "publishedAt": 1772452891939,
+      "commit": "https://github.com/openclaw/skills/commit/951c5bde367b9fc244c1edeb7fddd409ab3bdb11"
+    },
     {
       "version": "0.3.1",
       "publishedAt": 1772112828742,

@@ -1,5 +1,7 @@
 ---
 name: openclaw-dx
+version: 1.4.0
+license: MIT
 description: Diagnose and fix openclaw gateway issues. Use when the gateway is stuck, not starting, crash-looping, or rejecting connections. Covers main and --profile vesper gateways. Runs triage, applies fixes, writes incident report to ~/clawd/inbox.
 ---
 
@@ -61,6 +63,13 @@ for k,v in data.get('profiles',{}).items():
 
 # 10. Memory search / QMD (use --profile if vesper)
 openclaw memory status
+
+# 11. Check OPENCLAW_GATEWAY_TOKEN env var (multi-profile foot-gun)
+echo "OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-unset}"
+
+# 12. Verify plist profile alignment
+grep OPENCLAW_STATE_DIR ~/Library/LaunchAgents/ai.openclaw.gateway.plist
+grep OPENCLAW_STATE_DIR ~/Library/LaunchAgents/ai.openclaw.vesper.plist
 ```
 
 ## Common Failure Modes
@@ -215,6 +224,43 @@ launchctl bootstrap gui/501 ~/Library/LaunchAgents/ai.openclaw.gateway.plist
 - Consider a watchdog or `KeepAlive` with `ThrottleInterval=30` in the plist
 - If using the gateway tool's `config.patch` action, combine auth + plugin + compaction changes into one call
 
+### 13. OPENCLAW_GATEWAY_TOKEN Env Var Overriding Multi-Profile Token Auth
+**Symptom:** `unauthorized: gateway token mismatch` on `openclaw --profile vesper` (or any non-default profile), even when `gateway.auth.token` and `gateway.remote.token` match in the profile's config. Main profile works fine.
+**Diagnosis:** The CLI resolves auth tokens with this precedence:
+```
+process.env.OPENCLAW_GATEWAY_TOKEN > gateway.remote.token (config)
+```
+If `OPENCLAW_GATEWAY_TOKEN` is set in shell rc (`~/.zshrc`/`~/.bashrc`) to main's token, the CLI sends main's token to ALL profiles, including vesper — which has its own gateway.auth.token.
+**Fix:** Sync all profiles to use the same gateway auth token (matching `$OPENCLAW_GATEWAY_TOKEN`):
+```bash
+# Check env var
+echo $OPENCLAW_GATEWAY_TOKEN
+# In each profile's openclaw.json, set gateway.auth.token AND gateway.remote.token to match
+```
+**Alternative:** Remove `OPENCLAW_GATEWAY_TOKEN` from shell rc and rely solely on config-file tokens. Then each profile can have independent tokens.
+**Prevention:** When using `OPENCLAW_GATEWAY_TOKEN` env var with multi-profile setups, all profiles must use the same auth token value. The env var is profile-agnostic.
+
+### 14. LaunchAgent Plist Overwritten to Wrong Profile
+**Symptom:** `unauthorized: gateway token mismatch` on main profile. Main gateway appears to be running (port listening) but uses wrong config. Vesper commands may work against main's port.
+**Diagnosis:** The `ai.openclaw.gateway.plist` was overwritten (likely by `openclaw --profile vesper gateway install` or agent config patches) to point all env vars to vesper's state dir. Check:
+```bash
+grep OPENCLAW_STATE_DIR ~/Library/LaunchAgents/ai.openclaw.gateway.plist
+# Should show ~/.openclaw, NOT ~/.openclaw-vesper
+grep OPENCLAW_PROFILE ~/Library/LaunchAgents/ai.openclaw.gateway.plist
+# Should NOT be present (main is the default profile)
+```
+**Fix:** Edit the plist to restore correct profile paths:
+- `OPENCLAW_STATE_DIR` → `~/.openclaw`
+- `OPENCLAW_CONFIG_PATH` → `~/.openclaw/openclaw.json`
+- Remove `OPENCLAW_PROFILE` key (main doesn't need it)
+- `StandardOutPath` → `~/.openclaw/logs/gateway.log`
+- `StandardErrorPath` → `~/.openclaw/logs/gateway.err.log`
+- `OPENCLAW_GATEWAY_PORT` → `18789`
+- `OPENCLAW_LAUNCHD_LABEL` → `ai.openclaw.gateway`
+
+Then restart: `launchctl bootout gui/501/ai.openclaw.gateway && launchctl bootstrap gui/501 ~/Library/LaunchAgents/ai.openclaw.gateway.plist`
+**Prevention:** After running `openclaw --profile <name> gateway install`, verify BOTH plists still point to the correct profiles. The install command may overwrite the default profile's plist.
+
 ## Memory Thresholds
 
 | RSS | Status | Action |
@@ -259,7 +305,9 @@ If the gateway OOMs before hitting the RSS thresholds above, this is likely the 
 
 ## Auth
 
-- Gateway password: `$OPENCLAW_GATEWAY_PASSWORD` (env var in shell rc — `~/.zshrc` on macOS default, `~/.bashrc` if using bash)
+- Gateway token: `$OPENCLAW_GATEWAY_TOKEN` (env var in shell rc — `~/.zshrc`/`~/.bashrc`). **Takes precedence over `gateway.remote.token` in config.** Profile-agnostic — all profiles must use the same token when this env var is set.
+- Gateway password: `$OPENCLAW_GATEWAY_PASSWORD` (env var in shell rc — `~/.zshrc`/`~/.bashrc`)
+- CLI auth resolution order: `$OPENCLAW_GATEWAY_TOKEN` > `gateway.remote.token` (config)
 - `gateway.controlUi.dangerouslyDisableDeviceAuth: true` — only bypasses Control UI, not CLI/TUI
 - CLI/TUI always requires device pairing in 2026.2.25+
 

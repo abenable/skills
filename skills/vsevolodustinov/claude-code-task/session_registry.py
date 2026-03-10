@@ -163,12 +163,14 @@ def find_session_by_label(label: str) -> Optional[Dict]:
 
     # First try exact match
     for session_id, entry in data["sessions"].items():
-        if entry.get("label", "").lower() == label_lower:
+        entry_label = (entry.get("label") or "")
+        if entry_label.lower() == label_lower:
             return entry
 
     # Then try substring match
     for session_id, entry in data["sessions"].items():
-        if label_lower in entry.get("label", "").lower():
+        entry_label = (entry.get("label") or "")
+        if label_lower in entry_label.lower():
             return entry
 
     return None

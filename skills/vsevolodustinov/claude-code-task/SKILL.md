@@ -1,6 +1,6 @@
 ---
 name: claude-code-task
-description: "Run Claude Code tasks in background with automatic result delivery. Use for coding tasks, research in codebase, file generation, complex automations. Zero OpenClaw tokens while Claude Code works."
+description: "Launch Claude Code async in background with automatic delivery to Telegram/WhatsApp. Use for coding, refactoring, codebase research, file generation, and complex multi-step automations. NOT for quick one-off questions or real-time interactive tasks. Includes strict thread-safe routing + E2E operator validation workflow."
 ---
 
 # Claude Code Task (Async)
@@ -24,6 +24,71 @@ Give it prompts the same way you'd talk to a smart human — natural language, f
 - Tasks needing real-time interaction
 
 ## Quick Start
+
+## What "run tests" means for this skill (critical)
+
+When user asks things like:
+- "прогони все тесты"
+- "run tests"
+- "проверь что всё работает"
+
+it means **run the full E2E operator validation flow** for `run-task.py` routing + notifications.
+
+It does **NOT** mean `pytest`/`unittest` discovery by default.
+
+Required behavior:
+1. Run routing validation first (`--validate-only`).
+2. Launch smoke/E2E scenario via `nohup` and file-based prompt.
+3. Wait for completion through normal async flow (wake/event), not same-turn blocking.
+4. Report PASS/FAIL against E2E criteria (routing, heartbeat, mid-task update, completion delivery).
+
+Use the canonical protocol: **[references/testing-protocol.md](references/testing-protocol.md)** and the section below **Full E2E Test (reference)**.
+
+## Async Boundary Rule (mandatory)
+
+`run-task.py` is asynchronous orchestration.
+
+After a successful `nohup` launch, the correct behavior is:
+1. Send a short launch acknowledgment (PID/log/session), then
+2. **Stop this turn immediately**.
+3. Continue only when wake/completion event arrives in the same session.
+
+Do **not** keep waiting in the same turn for Claude Code completion.
+Do **not** poll and then summarize in the same turn unless user explicitly asked for active live monitoring.
+
+Anti-pattern:
+- ❌ Launch `run-task.py` and keep responding as if completion should appear in this turn.
+
+Correct pattern:
+- ✅ Launch `run-task.py` → acknowledge launch → stop → wait for wake.
+
+## Launch Confirmation Gate (mandatory)
+
+Never claim "launched" until you have **positive launch proof**.
+
+Required proof checklist (all):
+1. `nohup` command returned a PID,
+2. process is alive (`ps -p <PID>`),
+3. run log contains `🔧 Starting Claude Code...` (or equivalent startup marker),
+4. routing was validated (`--validate-only`) for Telegram thread runs.
+
+If launch fails with `❌ Invalid routing`:
+- resolve via `sessions_list`,
+- rerun with explicit `--notify-channel telegram --notify-thread-id <id> --notify-session-id <uuid>`,
+- re-check proof checklist,
+- only then send launch acknowledgment.
+
+Do not send "Claude Code ушёл в работу" before this gate is satisfied.
+
+## Pre-launch planning note (mandatory)
+
+Before launching Claude Code, post a short plan in chat:
+- how you plan to solve the task,
+- what result you expect from this run,
+- any clarifying questions/assumptions,
+- whether you expect one iteration or a staged multi-iteration approach.
+
+If staged: explicitly say this run is "phase 1" and what signal will decide phase 2.
 
 ## Telegram Thread Safety (must-follow)
 
@@ -115,9 +180,11 @@ All 5 notification types route to the DM thread when `--session` key contains `:
 - `--reply-to-message-id` — optional debug field; avoid for DM thread routing.
 - `--validate-only` — resolve routing and exit (no Claude run). Use this to verify thread launch args safely.
 
-- `--notify-channel` — optional override (`telegram`/`whatsapp`)
-- `--notify-target` — optional override for chat ID / JID
+- `--notify-channel` — optional channel hint (`telegram`/`whatsapp`); target is always auto-resolved from session metadata
 - `--timeout` — max runtime in seconds (default: 7200 = 2 hours)
+- `--completion-mode` — optional legacy hint (`single` default, `iterate` if explicitly needed)
+- `--max-iterations` — optional budget hint when using iterate mode
+- `--trace-live` — emit live technical trace markers into the same chat/thread (debug mode)
 - Always redirect stdout/stderr to a log file
 
 ### Why file-based prompts?
@@ -127,9 +194,9 @@ Research/complex prompts contain single quotes, double quotes, markdown, backtic
 
 The `detect_channel()` function determines where to send notifications:
 
-1. **CLI override wins** — if `--notify-channel` and `--notify-target` are both provided, those are used exclusively
+1. **Deterministic auto-resolve** — target is resolved from session metadata/session key (no manual target flag)
 2. **WhatsApp auto-detect** — if the session key contains `@g.us` (WhatsApp group JID), WhatsApp is used
-3. **No target** — if neither applies, notifications are silently skipped
+3. **Fail fast on unresolved Telegram target** — script exits with `❌ Invalid routing` instead of silent misroute
 
 ```python
 def detect_channel(session_key):
@@ -167,15 +234,40 @@ def detect_channel(session_key):
 ### WhatsApp notification flow:
 1. **Heartbeat pings** (every 60s) → WhatsApp direct (informational, no agent wake)
 2. **Final result** → WhatsApp direct (human sees immediately) + `sessions_send` (agent wakes up)
-3. **Agent receives** `[CLAUDE_CODE_RESULT]` via sessions_send → processes it → sends summary via `message(send)` to WhatsApp group
+3. **Agent receives** completion payload via sessions_send → processes it → sends summary via `message(send)` to WhatsApp group
 4. Human sees both: raw result + agent's analysis/next steps
 
+### Iterative continuation mode (wake behavior)
+`--completion-mode` is optional (default `single`) and acts as a hint:
+- `single` = one run → continuation summary → stop
+- `iterate` = continuation summary + exactly one next iteration when gaps remain
+
+Wake payload now frames continuation as the **same ongoing assistant conversation** (same agent identity, same session, same history) after Claude Code replies to the previous launch.
+
+In `iterate` mode the continuation flow is:
+- react briefly to Claude result
+- evaluate goal completion (gap analysis)
+- if gaps remain: explain next fix and launch exactly one follow-up iteration
+- if complete: report final outcome and stop
+
+### Deterministic wake guard (anti-duplicate)
+- Each run now carries `run_id` and `wake_id` in wake payload.
+- `run-task.py` keeps per-project state in `/tmp/cc-orchestrator-state-<hash>.json`.
+- Duplicate/stale wake dispatches (same output or same wake_id) are skipped before wake delivery.
+- In debug mode (`--trace-live`), skipped wakes are announced as `[TRACE][TECH][TELEGRAM][WAKE][SKIP]`.
+
+### No silent launch policy (always-on)
+- Silent launch is forbidden (not only in debug mode).
+- On wake, agent must first post a visible decision turn:
+  - `[TRACE][AGENT][WAKE_RECEIVED] ...`
+  - `[TRACE][AGENT][DECISION] continue|stop ...`
+- Only after that visible decision may the next Claude iteration be launched.
 ### Telegram notification flow (DM Threaded Mode — full pipeline):
-1. 🚀 **Launch notification** → thread ✅ (silent; HTML; `<blockquote expandable>` for prompt; via `send_telegram_direct`)
+1. 🚀 **Launch notification** → thread ✅ (silent; HTML; `<blockquote expandable>` for prompt; via `send_telegram_direct`; includes `Resume: <session-id|new>`)
 2. ⏳ **Heartbeat** (every 60s) → thread ✅ (silent; plain text; via `send_telegram_direct`)
 3. 📡 **Claude Code mid-task updates** → thread ✅ (on-disk Python script `/tmp/cc-notify-{pid}.py`; CC calls file; prefix `"📡 🟢 CC: "` auto-added)
 4. ✅/❌/⏰/💥 **Result notification** → thread ✅ (HTML; `<blockquote expandable>` for result; via `send_telegram_direct`)
-5. 🤖 **Agent summary** → main chat ⚠️ (known limitation: `openclaw agent --session-id` synthetic messages have no `currentThreadTs`; acceptable)
+5. 🤖 **Agent continuation reply** → delivered to chat via `openclaw agent --deliver` ✅ (same session continuation is visible to user)
 
 **`send_telegram_direct()`** is the core mechanism for all thread-targeted notifications from external scripts. It calls `api.telegram.org` directly with `message_thread_id` — bypasses the OpenClaw message tool entirely (which cannot route to DM threads from outside a session context).
 
@@ -185,7 +277,7 @@ def detect_channel(session_key):
 
 **WhatsApp:** Raw result sent directly (human sees it immediately) + `sessions_send` wakes agent for analysis.
 
-**Telegram:** Result sent via `send_telegram_direct` → then agent woken via `openclaw agent --session-id` (no `--deliver`). The agent sends its response via `message(action=send)` and replies `NO_REPLY`. This avoids double messages — `--deliver` would deliver the agent's turn output *on top of* any `message(action=send)` calls inside the turn.
+**Telegram:** Result sent via `send_telegram_direct` → then agent is woken via `openclaw agent --session-id --deliver` so the continuation turn is visible in chat by default. This is the intended “same agent, same conversation” behavior after Claude completion.
 
 **Why not `sessions_send` for Telegram?** `sessions_send` is blocked in the HTTP `/tools/invoke` deny list by architectural design. The `openclaw agent` CLI bypasses this limitation.
 
@@ -206,10 +298,14 @@ def detect_channel(session_key):
 - Can check running tasks: `ls skills/claude-code-task/pids/`
 
 ### Silent mode (Telegram only)
-Telegram supports silent notifications (no sound). This is used for background/informational messages:
+Telegram supports silent notifications (no sound).
+
+Current policy: **all Claude Code notifications are silent** in Telegram:
 - Heartbeat pings → `silent=True`
 - Launch notifications → `silent=True`
-- Final results → `silent=False` (default, user attention needed)
+- Mid-task updates (`📡 🟢 CC`) → `silent=True`
+- Final results → `silent=True`
+- Wake-summary instruction requests `silent=True`
 
 WhatsApp does NOT support silent mode — the flag is ignored for WhatsApp.
 
@@ -230,7 +326,7 @@ Telegram has two distinct thread models. The key difference for run-task.py is h
 - Heartbeats + mid-task: `parse_mode=None` (plain text, avoid Markdown parse errors)
 - **`parse_mode="Markdown"` trap**: finish messages contain `**text**` (CommonMark bold); Telegram MarkdownV1 rejects this with HTTP 400 — messages silently don't arrive
 - **`replyTo` trap**: combining `replyTo` + `message_thread_id` → Telegram rejects request → fallback strips thread_id → message lands in main chat
-- Agent summary: `openclaw agent --session-id <uuid>` wakes thread session; response goes to main chat (no `currentThreadTs` in synthetic messages — known, acceptable limitation)
+- Agent continuation reply: `openclaw agent --session-id <uuid> --deliver` publishes the wake turn to chat so the user sees the same ongoing assistant conversation.
 
 **Forum Groups** (supergroup with Forum topics enabled):
 - Same `send_telegram_direct()` approach works; `message_thread_id` is standard Bot API for Forum topics
@@ -254,7 +350,7 @@ Telegram has two distinct thread models. The key difference for run-task.py is h
 | Error | ❌ | send_channel + sessions_send | send_telegram_direct (HTML) + openclaw agent | ✅ message_thread_id |
 | Timeout | ⏰ | send_channel + sessions_send | send_telegram_direct (HTML) + openclaw agent | ✅ message_thread_id |
 | Crash | 💥 | send_channel + sessions_send | send_telegram_direct (HTML) + openclaw agent | ✅ message_thread_id |
-| Agent summary | 🤖 | — | openclaw agent wake | ⚠️ main chat (no thread ctx) |
+| Agent continuation reply | 🤖 | — | openclaw agent wake (`--deliver`) | ✅ visible in chat |
 
 ## Claude Code Flags
 
@@ -297,7 +393,21 @@ Use this when you need to validate the **entire pipeline** in one run:
 2. At least one wrapper heartbeat appears after ~60s
 3. At least one mid-task CC update appears (via `/tmp/cc-notify-<pid>.py`)
 4. Final result appears in the same thread (expandable result quote)
-5. Agent wake is attempted (`openclaw agent --session-id ...`) and does not duplicate final result
+5. Agent wake continuation is delivered (`openclaw agent --session-id ... --deliver`) and appears visibly in chat
+
+### Interactive test rule (time budget)
+For interactive/iterate-mode testing, do **exactly one** continuation step after phase 1.
+- Phase 1: intentionally incomplete output (prove gap detected)
+- Continuation #1: close the gap and finish
+- Stop there; do not run multi-hop continuation loops during routine tests
+
+Reason: keeps regression runs fast (minutes, not 20+ minutes) while still validating the critical iterate path.
+
+### Visibility rule (mandatory)
+Between `✅ Claude Code completed` and any next `🚀 Claude Code started`, there must be a user-facing analysis message in the thread.
+- The agent must first post: what was done, what gaps remain, and the decision to continue/stop.
+- Only after that message may it launch the next iteration.
+- No silent jump from completion directly to next start.
 
 ### Canonical full test prompt pattern
 - keep prompt **compact** (about 10 lines) for routine testing
@@ -305,6 +415,18 @@ Use this when you need to validate the **entire pipeline** in one run:
 - force runtime >60s (`sleep 70`) to trigger wrapper heartbeat
 - explicitly instruct Claude to call the notify script at least twice
 - include a short structured report so output is easy to verify
+- the >4500-char filler can be useful work (not just junk): use it for any creative/output-generating task the agent genuinely wants to do in that moment, as long as it remains safe and relevant to the test context
+
+## Long-running task guidance
+
+If a Claude Code task is expected to run longer than ~1 minute, explicitly ask Claude to send intermediate progress updates during execution.
+
+Recommended wording to include in prompt:
+- "Send a progress update when you start"
+- "Send another update after major milestone(s)"
+- "If task exceeds 60 seconds, send at least one heartbeat-style update"
+
+For thread-safe Telegram runs, updates should use the injected automation script (`/tmp/cc-notify-<pid>.py`).
 
 ### Canonical launch (minimal mode)
 ```bash
@@ -445,6 +567,22 @@ Claude Code sessions can be resumed to continue previous conversations. This is 
 - Continuing after timeouts or interruptions
 - Multi-step workflows where context matters
 
+### ⚠️ Resume ID — Critical Rule
+`--resume` takes the **Claude Code session ID**, not the `run_id` or `wake_id`.
+
+Correct source — look for this line in the run log:
+```
+📝 Session registered: <session-id-here>
+```
+That is the value to pass as `--resume <session-id>`.
+
+**Do NOT use:**
+- `run_id` from wake payload
+- `wake_id` from wake payload
+- session IDs from previous unrelated runs
+
+When in doubt: skip `--resume` and start fresh.
+
 ### How to Resume
 
 When a task completes, the session ID is automatically captured and saved to the registry (`~/.openclaw/claude_sessions.json`).
@@ -564,12 +702,38 @@ nohup python3 {baseDir}/run-task.py \
   > /tmp/cc-run2.log 2>&1 &
 ```
 
+## Wake Troubleshooting
+
+When the agent wake / continue chain fails (no agent summary, wrong thread, session not resolved,
+iterative loop stalls, etc.), see the dedicated guide:
+
+→ **[WAKE-TROUBLESHOOTING.md](WAKE-TROUBLESHOOTING.md)**
+
+Includes a **Quick Triage Checklist (60 seconds)** plus detailed items: agent not waking,
+double messages, wrong thread routing, UUID resolution failures, session-locked wake,
+`❌ Invalid routing`, Telegram HTTP 400 silent drops, mid-task update failures, stale/duplicate wake skips, and more.
+
+## Current Stable Behavior (2026-03-03)
+
+This is the version validated in live Telegram thread tests.
+
+- Wake continuity: Telegram wake is delivered (`openclaw agent --deliver`) so continuation turns are visible in chat.
+- No silent launch policy: agent must post a visible decision turn before launching next iteration.
+- Deterministic wake guard: duplicate/stale wake dispatch is skipped by per-project state + `wake_id`/output dedupe.
+- Trace mode: `--trace-live` emits technical milestones (`RUN_TASK START/COMPLETE`, `WAKE`, `WAKE SKIP`) into the same thread.
+- Resume safety: `--resume` must use the Claude session id from `📝 Session registered: ...` in the run log.
+- Compact heartbeat now includes active subagents count as `sub:<N>` (example: `🟢 CC (3min) | sub:1 | 12K tok | 18 calls | 🔧 Bash`).
+- `output_tokens` is aggregated from all assistant stream messages (main agent + subagents).
+- `last_activity` / last tool signal is unified: whichever actor (main or subagent) emitted the latest tool event is shown.
+- Active subagents are tracked via Task/Agent lifecycle in stream-json (`tool_use id` add, matching `tool_result`/`task_notification` remove).
+
 ## Files
 
 ```
 skills/claude-code-task/
-├── SKILL.md              # This file
-├── run-task.py           # Async runner with notifications
-├── session_registry.py   # Session metadata storage
-└── pids/                 # PID files for running tasks (auto-managed)
+├── SKILL.md                    # This file
+├── WAKE-TROUBLESHOOTING.md     # Wake/continue chain diagnostics
+├── run-task.py                 # Async runner with notifications
+├── session_registry.py         # Session metadata storage
+└── pids/                       # PID files for running tasks (auto-managed)
 ```

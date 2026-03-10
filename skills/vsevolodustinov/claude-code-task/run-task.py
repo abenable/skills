@@ -23,6 +23,7 @@ Features:
 import argparse
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -32,6 +33,8 @@ from datetime import datetime
 from pathlib import Path
 
 import requests
+import uuid
+import hashlib
 from typing import Optional
 
 # Import session registry
@@ -70,8 +73,8 @@ def get_token():
 
 BG_PREFIX = "📡 "  # Visual marker for background (non-agent-waking) messages
 
-# Notification overrides (set from --notify-channel / --notify-target CLI args)
-# If not set, channel is auto-detected from session key (WhatsApp fallback)
+# Notification overrides
+# If not set, channel/target are auto-detected from session key and session metadata.
 NOTIFY_CHANNEL_OVERRIDE = None
 NOTIFY_TARGET_OVERRIDE = None
 
@@ -99,7 +102,7 @@ def extract_thread_id(session_key: str) -> Optional[str]:
 
 def detect_channel(session_key: str):
     """Return (channel, target) for notifications based on session key or CLI overrides."""
-    # Explicit overrides from --notify-channel / --notify-target take priority
+    # Explicit internally-resolved overrides take priority
     if NOTIFY_CHANNEL_OVERRIDE and NOTIFY_TARGET_OVERRIDE:
         return NOTIFY_CHANNEL_OVERRIDE, NOTIFY_TARGET_OVERRIDE
     # WhatsApp: extract JID from session key
@@ -108,6 +111,25 @@ def detect_channel(session_key: str):
         return "whatsapp", jid
     # Default: no notification target known
     return None, None
+
+
+def build_whatsapp_group_session_key(base_session_key: str, group_jid: str) -> Optional[str]:
+    """Build whatsapp group session key preserving agent id from base session.
+
+    Example:
+      base:  agent:iris:main
+      group: 120...@g.us
+      ->     agent:iris:whatsapp:group:120...@g.us
+    """
+    if not base_session_key or not group_jid:
+        return None
+    parts = base_session_key.split(":")
+    if len(parts) < 2:
+        return None
+    if parts[0] != "agent":
+        return None
+    agent_id = parts[1]
+    return f"agent:{agent_id}:whatsapp:group:{group_jid}"
 
 
 def _invoke_tool(token: str, tool: str, args: dict, timeout: int = 20) -> Optional[dict]:
@@ -265,8 +287,14 @@ def resolve_thread_meta_from_local_files(thread_id: str) -> Optional[dict]:
                 for b in blocks:
                     txt = b.get("text", "") if isinstance(b, dict) else ""
                     if "sender_id" in txt:
+                        # Robust extraction: message may contain multiple JSON blocks,
+                        # so wide {..} parsing can fail. Prefer direct regex first.
+                        m = re.search(r'"sender_id"\s*:\s*"?(\d+)"?', txt)
+                        if m:
+                            telegram_target = m.group(1)
+                            break
                         try:
-                            # envelope is embedded json in markdown fence
+                            # Fallback: envelope is embedded json in markdown fence
                             start = txt.find("{")
                             end = txt.rfind("}")
                             if start != -1 and end != -1 and end > start:
@@ -393,9 +421,63 @@ def send_channel(token: str, session_key: str, text: str, bg_prefix: bool = True
         pass
 
 
+def trace_live(token: Optional[str], session_key: Optional[str], enabled: bool, tag: str, text: str,
+               thread_id: Optional[str] = None, reply_to: Optional[str] = None):
+    """Send live technical trace events to the same chat/thread."""
+    if not enabled or not token or not session_key:
+        return
+    send_channel(token, session_key, f"[TRACE][TECH]{tag} {text}", bg_prefix=False, silent=True,
+                 thread_id=thread_id, reply_to=reply_to)
+
+
+def state_file_for_project(project_name: str) -> Path:
+    """State file path for per-project wake dedupe."""
+    h = hashlib.sha1(project_name.encode("utf-8")).hexdigest()[:12]
+    return Path(f"/tmp/cc-orchestrator-state-{h}.json")
+
+
+def load_state(path: Path) -> dict:
+    try:
+        if path.exists():
+            return json.loads(path.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+def save_state(path: Path, state: dict):
+    try:
+        path.write_text(json.dumps(state, indent=2, ensure_ascii=False))
+    except Exception:
+        pass
+
+
+def should_dispatch_wake(state_path: Optional[Path], output_file_path: str, wake_id: str) -> bool:
+    """Return True if wake should be dispatched (dedupe repeated output/wake)."""
+    if not state_path:
+        return True
+    st = load_state(state_path)
+    if st.get("last_dispatched_wake_id") == wake_id:
+        return False
+    if st.get("last_dispatched_output") == output_file_path:
+        return False
+    st["last_dispatched_wake_id"] = wake_id
+    st["last_dispatched_output"] = output_file_path
+    st["last_dispatch_at"] = int(time.time())
+    save_state(state_path, st)
+    return True
+
+
 def notify_session(token: str, session_key: str, group_jid: Optional[str], message: str,
                    thread_id: Optional[str] = None, notify_session_id: Optional[str] = None,
-                   reply_to: Optional[str] = None, html_msg: Optional[str] = None):
+                   reply_to: Optional[str] = None, html_msg: Optional[str] = None,
+                   completion_mode: str = "single",
+                   exit_code: int = 0, project_name: str = "", output_file_path: str = "",
+                   iter_budget: int = 1,
+                   trace_enabled: bool = False,
+                   run_id: str = "",
+                   wake_id: str = "",
+                   state_path: Optional[Path] = None):
     """Send CC result to the appropriate channel and wake the agent.
 
     WhatsApp: sends to group + attempts sessions_send to wake agent.
@@ -417,7 +499,16 @@ def notify_session(token: str, session_key: str, group_jid: Optional[str], messa
 
     # Wake the agent based on channel
     if channel == "whatsapp" and session_key:
-        # WhatsApp: sessions_send puts result in session queue
+        # WhatsApp: sessions_send puts result in session queue.
+        # If explicit notify target points to a different group than source session,
+        # wake that group session directly to avoid cross-session NO_REPLY artifacts.
+        wake_session_key = session_key
+        if target:
+            maybe_group_session = build_whatsapp_group_session_key(session_key, target)
+            if maybe_group_session and maybe_group_session != session_key:
+                wake_session_key = maybe_group_session
+
+        trace_live(token, session_key, trace_enabled, "[WHATSAPP][WAKE]", "sending sessions_send wake", thread_id, reply_to)
         agent_msg = (
             f"[CLAUDE_CODE_RESULT]\n{message}\n\n"
             f"---\n"
@@ -431,11 +522,11 @@ def notify_session(token: str, session_key: str, group_jid: Optional[str], messa
                 f"{GW_URL}/tools/invoke",
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                 json={"tool": "sessions_send",
-                      "args": {"sessionKey": session_key, "message": agent_msg}},
+                      "args": {"sessionKey": wake_session_key, "message": agent_msg}},
                 timeout=30,
             )
             if resp.status_code == 200:
-                print(f"✓ Agent notified via sessions_send", file=sys.stderr)
+                print(f"✓ Agent notified via sessions_send -> {wake_session_key}", file=sys.stderr)
             else:
                 print(f"⚠ sessions_send returned {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
         except Exception as e:
@@ -443,54 +534,91 @@ def notify_session(token: str, session_key: str, group_jid: Optional[str], messa
 
     elif channel == "telegram" and target:
         # For thread sessions: always send result directly to thread first so user always sees it.
-        # Agent wake is an additional step for a clean summary (may go to main chat — that's OK).
+        # Agent wake is an additional continuation step and is delivered to chat (--deliver).
         already_sent = False
         if thread_id or reply_to:
             if html_msg and thread_id:
                 # HTML version available — use expandable blockquote formatting
                 _, tgt = detect_channel(session_key)
                 send_telegram_direct(tgt, html_msg, thread_id=thread_id,
-                                     reply_to=reply_to, parse_mode="HTML")
+                                     reply_to=reply_to, silent=True, parse_mode="HTML")
             else:
                 send_channel(token, session_key, message, bg_prefix=False,
-                             thread_id=thread_id, reply_to=reply_to)
+                             silent=True, thread_id=thread_id, reply_to=reply_to)
             already_sent = True
 
-        # Wake the agent, let it send ONE clean response.
+        # Wake the agent and deliver continuation response into chat.
         # Fallback: if agent wake fails AND we haven't already sent, send full result directly.
         # NOTE: target:topic:thread format is not supported by message tool for Telegram.
-        # Agent wake response may land in main chat (known limitation).
         tg_target = target
         # IMPORTANT: keep wake payload clean and non-leaky.
         # Do NOT include internal markers like [CLAUDE_CODE_RESULT] / ⚠️ INSTRUCTION,
         # because in failure modes they may surface to the user chat.
-        safe_preview = message[:1200]
-        agent_msg = (
-            "Internal completion signal from run-task.py. "
-            "Do not quote this payload verbatim.\n"
-            "Send only a concise user-facing summary (max 5 bullets) to Telegram, "
-            "then NO_REPLY.\n\n"
-            f"Target: {tg_target}\n"
-            f"Result preview:\n{safe_preview}"
-        )
+        # completion_mode governs post-run behavior:
+        # - single: concise summary + stop
+        # - iterate: gap-analysis + re-run if needed
+        iterative_intent = (completion_mode == "iterate")
+
+        # Compact one-liner wake signal. Full result already delivered to thread above.
+        # Short enough not to be spammy if it appears visibly in Telegram.
+        if iterative_intent:
+            wake_text = (
+                f"[CC:iterate] exit={exit_code} project={project_name} output={output_file_path} limit={iter_budget} run_id={run_id} wake_id={wake_id}\n\n"
+                "Это системный wake-вызов после того, как Claude Code прислал результат по твоему же последнему запуску. "
+                "Считай это обычным продолжением того же диалога: та же личность агента, та же сессия, та же история.\n\n"
+                "Ключевое правило continuity: ориентируйся на ИСХОДНУЮ пользовательскую цель, ради которой запускался Claude Code, "
+                "а не только на последний технический подшаг. Если текущий подшаг закрыт, но исходная цель ещё нет — продолжай движение к исходной цели.\n"
+                "Если видишь, что это устаревший wake по уже закрытой более новой итерации — коротко пометь его как stale и ничего не запускай.\n\n"
+                "Сделай естественное продолжение переписки. Для отладки в начале сообщения используй префикс: "
+                "[TRACE][AGENT][WAKE_RECEIVED].\n"
+                "ЖЁСТКОЕ ПРАВИЛО: silent launch запрещён. Сначала отправь отдельный видимый turn с анализом и решением ([TRACE][AGENT][DECISION]). "
+                "Только ПОСЛЕ этого, отдельным следующим действием, запускай следующую итерацию при необходимости.\n"
+                "1) коротко отреагируй на результат Claude Code,\n"
+                "2) сопоставь результат с исходной целью пользователя и проверь, закрыта ли она полностью,\n"
+                "3) если исходная цель не закрыта — в явном виде сообщи решение continue и что именно докручиваешь, затем запусти ровно одну следующую итерацию,\n"
+                "4) если исходная цель закрыта — в явном виде сообщи решение stop и остановись."
+            )
+        else:
+            wake_text = (
+                f"[CC:single] exit={exit_code} project={project_name} output={output_file_path} limit=1 run_id={run_id} wake_id={wake_id}\n\n"
+                "Это системный wake-вызов после того, как Claude Code прислал результат по твоему же последнему запуску. "
+                "Считай это обычным продолжением того же диалога: та же личность агента, та же сессия, та же история.\n\n"
+                "Ключевое правило continuity: ориентируйся на ИСХОДНУЮ пользовательскую цель, ради которой запускался Claude Code, "
+                "а не только на последний технический подшаг.\n"
+                "Если видишь, что это устаревший wake по уже закрытой более новой итерации — коротко пометь его как stale и заверши без новых действий.\n\n"
+                "Сделай естественное продолжение переписки. Для отладки в начале сообщения используй префикс: "
+                "[TRACE][AGENT][WAKE_RECEIVED].\n"
+                "ЖЁСТКОЕ ПРАВИЛО: silent launch запрещён. Дай отдельный видимый turn с анализом и явным решением ([TRACE][AGENT][DECISION]).\n"
+                "1) коротко отреагируй на результат,\n"
+                "2) оцени, закрыта ли исходная цель пользователя целиком,\n"
+                "3) сообщи итог пользователю и остановись."
+            )
+
         try:
-            # Build openclaw agent command
             if notify_session_id:
-                # Target exact thread session by UUID
                 cmd = ["openclaw", "agent",
                        "--session-id", notify_session_id,
-                       "--message", agent_msg,
-                       "--timeout", "60"]
+                       "--message", wake_text,
+                       "--deliver",
+                       "--timeout", "30"]
             else:
-                # Fallback: target by channel+to (goes to main session)
                 cmd = ["openclaw", "agent",
                        "--channel", "telegram",
                        "--to", target,
-                       "--message", agent_msg,
-                       "--timeout", "60"]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=70)
+                       "--message", wake_text,
+                       "--deliver",
+                       "--timeout", "30"]
+            if not should_dispatch_wake(state_path, output_file_path, wake_id):
+                trace_live(token, session_key, trace_enabled, "[TELEGRAM][WAKE][SKIP]",
+                           f"duplicate/stale wake ignored (project={project_name}, output={output_file_path}, wake_id={wake_id})",
+                           thread_id, reply_to)
+                return
+            trace_live(token, session_key, trace_enabled, "[TELEGRAM][WAKE]",
+                       f"dispatching openclaw agent wake (project={project_name}, output={output_file_path}, wake_id={wake_id})",
+                       thread_id, reply_to)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
             if result.returncode == 0:
-                print(f"✓ Agent woken via openclaw agent (no --deliver)", file=sys.stderr)
+                print(f"✓ Agent woken via openclaw agent", file=sys.stderr)
             else:
                 print(f"⚠ Agent wake failed: {result.stderr[:100]}", file=sys.stderr)
                 if not already_sent:
@@ -551,7 +679,7 @@ def format_tokens(n: int) -> str:
 
 
 def parse_stream_line(line: str, state: dict):
-    """Parse stream-json line for activity tracking and session ID capture."""
+    """Parse stream-json line for activity tracking, session ID capture, and active subagent count."""
     try:
         data = json.loads(line)
         msg_type = data.get("type", "")
@@ -595,7 +723,7 @@ def parse_stream_line(line: str, state: dict):
                 state["output_tokens"] += usage["output_tokens"]
 
         if msg_type == "assistant" and "message" in data:
-            # Extract usage from assistant message — per-turn tokens, accumulate
+            # Extract usage from assistant message — aggregate across main + subagents
             usage = data.get("message", {}).get("usage", {})
             if "output_tokens" in usage:
                 state["output_tokens"] += usage["output_tokens"]
@@ -606,6 +734,12 @@ def parse_stream_line(line: str, state: dict):
                     state["tool_calls"] += 1
                     tool_name = block.get("name", "?")
                     tool_input = block.get("input", {})
+
+                    # Track active subagents by Task/Agent tool_use id
+                    if tool_name.lower() in ("task", "agent"):
+                        tid = block.get("id")
+                        if tid:
+                            state["active_subagent_ids"].add(tid)
 
                     if tool_name.lower() in ("write", "edit"):
                         fp = tool_input.get("file_path", "?")
@@ -621,6 +755,20 @@ def parse_stream_line(line: str, state: dict):
                         state["last_activity"] = f"🔍 {tool_name}"
                     else:
                         state["last_activity"] = f"🔧 {tool_name}"
+
+        elif msg_type == "user" and "message" in data:
+            # Mark subagent completion when Task/Agent tool_result returns to parent
+            for block in data.get("message", {}).get("content", []):
+                if block.get("type") == "tool_result":
+                    tid = block.get("tool_use_id")
+                    if tid and tid in state["active_subagent_ids"]:
+                        state["active_subagent_ids"].discard(tid)
+
+        elif msg_type == "system" and data.get("subtype") == "task_notification":
+            # Background task completion/failure path
+            tid = data.get("tool_use_id")
+            if tid and tid in state["active_subagent_ids"]:
+                state["active_subagent_ids"].discard(tid)
 
         elif msg_type == "result":
             state["last_activity"] = "✅ finishing..."
@@ -640,20 +788,27 @@ def main():
     parser.add_argument("--resume", help="Resume from previous Claude Code session ID")
     parser.add_argument("--session-label", help="Human-readable label for this session (e.g., 'Research on X')")
     parser.add_argument("--notify-channel", help="Channel for notifications override (telegram|whatsapp)")
-    parser.add_argument("--notify-target", help="Target (chat ID / JID) for notifications")
     parser.add_argument("--notify-thread-id", help="Telegram thread ID for threaded mode (auto-detected from session key)")
     parser.add_argument("--notify-session-id", help="OpenClaw session UUID for precise agent wake in threads")
     parser.add_argument("--reply-to-message-id", help="Telegram message ID to reply to (for DM thread routing)")
     parser.add_argument("--validate-only", action="store_true", help="Resolve routing and exit (no Claude run)")
     parser.add_argument("--allow-main-telegram", action="store_true", help="Allow Telegram launch without :thread: session (for non-thread Telegram setups)")
     parser.add_argument("--telegram-routing-mode", choices=["auto", "thread-only", "allow-non-thread"], default="auto", help="Telegram routing policy (default: auto)")
+    parser.add_argument("--completion-mode", choices=["single", "iterate"], default="single",
+                        help="(Optional, legacy) Post-completion hint: single (default) or iterate")
+    parser.add_argument("--max-iterations", type=int, default=5,
+                        help="Max iterations budget for iterate mode (shown in notifications; single mode is always 1)")
+    parser.add_argument("--trace-live", action="store_true",
+                        help="Send live technical trace events to chat/thread for debugging")
     args = parser.parse_args()
 
-    # Set notification globals (overrides auto-detection)
+    # Effective iteration budget for display/instructions
+    iter_budget = 1 if args.completion_mode == "single" else max(1, int(args.max_iterations))
+
+    # Set notification globals (channel hint; target must be resolved deterministically)
     global NOTIFY_CHANNEL_OVERRIDE, NOTIFY_TARGET_OVERRIDE
-    if args.notify_channel and args.notify_target:
+    if args.notify_channel:
         NOTIFY_CHANNEL_OVERRIDE = args.notify_channel
-        NOTIFY_TARGET_OVERRIDE = args.notify_target
 
     # Resolve thread_id: explicit arg takes priority, otherwise auto-detect from session key
     thread_id = args.notify_thread_id or extract_thread_id(args.session or "")
@@ -665,6 +820,9 @@ def main():
     project.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     output_file = args.output or f"/tmp/cc-{ts}.txt"
+    run_id = str(uuid.uuid4())
+    wake_id = str(uuid.uuid4())
+    state_path = state_file_for_project(str(project))
     group_jid = extract_group_jid(args.session or "")  # WhatsApp JID if present
     token = None
     pid_file = None
@@ -689,13 +847,11 @@ def main():
             print("❌ Invalid routing: thread session requires --notify-channel telegram", file=sys.stderr)
             sys.exit(2)
 
-        # If target omitted, auto-resolve from session delivery context
-        if not args.notify_target:
-            auto_tgt = (session_meta or {}).get("telegramTarget")
-            if auto_tgt:
-                args.notify_target = auto_tgt
-                NOTIFY_CHANNEL_OVERRIDE = "telegram"
-                NOTIFY_TARGET_OVERRIDE = auto_tgt
+        # Resolve target from session delivery context (mandatory for deterministic thread routing)
+        resolved_target = (session_meta or {}).get("telegramTarget")
+        if resolved_target:
+            NOTIFY_CHANNEL_OVERRIDE = "telegram"
+            NOTIFY_TARGET_OVERRIDE = resolved_target
 
         # If notify-session-id omitted, auto-resolve exact UUID by session key
         resolved_session_id = (session_meta or {}).get("sessionId")
@@ -714,21 +870,10 @@ def main():
             )
             sys.exit(2)
 
-        # If notify-target was provided but disagrees with resolved metadata, fail hard.
-        if args.notify_target and resolved_target and str(args.notify_target) != str(resolved_target):
-            print(
-                "❌ Invalid routing: --notify-target does not match thread session metadata\n"
-                f"   session key: {args.session}\n"
-                f"   provided target: {args.notify_target}\n"
-                f"   expected target: {resolved_target}",
-                file=sys.stderr,
-            )
-            sys.exit(2)
-
         # Hard requirements for thread sessions
-        if not args.notify_target:
-            print("❌ Invalid routing: thread session requires --notify-target (auto-resolve failed)", file=sys.stderr)
-            print("   Tip: pass --notify-target <chat_id> or ensure session exists in sessions_list", file=sys.stderr)
+        if not NOTIFY_TARGET_OVERRIDE:
+            print("❌ Invalid routing: thread session requires resolvable telegram target (auto-resolve failed)", file=sys.stderr)
+            print("   Tip: ensure session exists in sessions_list or local thread session files", file=sys.stderr)
             sys.exit(2)
         if not notify_session_id:
             print("❌ Invalid routing: thread session requires --notify-session-id (auto-resolve failed)", file=sys.stderr)
@@ -737,15 +882,14 @@ def main():
 
         # Ensure override is active after auto-resolution
         NOTIFY_CHANNEL_OVERRIDE = "telegram"
-        NOTIFY_TARGET_OVERRIDE = args.notify_target
 
     # Safety guard: Telegram launches without explicit thread are error-prone and can drift across threads.
     ch_now, tgt_now = detect_channel(args.session or "")
-    is_telegram_route = (ch_now == "telegram") or (args.notify_channel == "telegram" and bool(args.notify_target))
+    is_telegram_route = (ch_now == "telegram") or (args.notify_channel == "telegram")
     if is_telegram_route and not thread_id:
         # Non-thread Telegram is allowed for users/chats that do not use thread mode,
         # but guarded in auto mode if we detect ambiguity.
-        tg_target = args.notify_target
+        tg_target = NOTIFY_TARGET_OVERRIDE or (session_meta or {}).get("telegramTarget")
         user_scope_key = bool(args.session and args.session.startswith("agent:main:telegram:user:"))
         if not tg_target and user_scope_key:
             tg_target = args.session.split(":")[-1]
@@ -772,6 +916,20 @@ def main():
                     print("   Use thread session key (:thread:<id>) or pass --allow-main-telegram to force non-thread.", file=sys.stderr)
                     sys.exit(2)
 
+    # Deterministic Telegram target resolution: no manual --notify-target allowed.
+    # If Telegram routing is requested/detected and target cannot be resolved, fail fast.
+    if is_telegram_route:
+        resolved_tg = NOTIFY_TARGET_OVERRIDE or (session_meta or {}).get("telegramTarget")
+        user_scope_key = bool(args.session and args.session.startswith("agent:main:telegram:user:"))
+        if not resolved_tg and user_scope_key:
+            resolved_tg = args.session.split(":")[-1]
+        if not resolved_tg:
+            print("❌ Invalid routing: Telegram target could not be resolved from session metadata", file=sys.stderr)
+            print("   Provide a valid thread/user session key resolvable via sessions_list/local files.", file=sys.stderr)
+            sys.exit(2)
+        NOTIFY_CHANNEL_OVERRIDE = "telegram"
+        NOTIFY_TARGET_OVERRIDE = str(resolved_tg)
+
     if args.validate_only:
         ch, tgt = detect_channel(args.session or "")
         print("✅ Routing validation")
@@ -781,11 +939,14 @@ def main():
         print(f"   target: {tgt}")
         print(f"   notify_session_id: {notify_session_id}")
         print(f"   allow_main_telegram: {args.allow_main_telegram}")
+        print(f"   completion_mode: {args.completion_mode}")
+        print(f"   max_iterations: {iter_budget}")
         if session_meta:
             print(f"   resolved_session_id: {session_meta.get('sessionId')}")
             print(f"   resolved_telegram_target: {session_meta.get('telegramTarget')}")
         sys.exit(0)
 
+    exit_code = -1  # default; updated after Claude run completes
     try:
         # Write PID file
         pid_file = write_pid_file(args.task[:60])
@@ -804,17 +965,25 @@ def main():
         if args.session_label:
             print(f"   Label: {args.session_label}", file=sys.stderr)
         print(f"   PID: {os.getpid()}", file=sys.stderr)
+        print(f"   Completion mode: {args.completion_mode}", file=sys.stderr)
+        print(f"   Max iterations: {iter_budget}", file=sys.stderr)
+
+        # Resume display in launch message: show session id for resumed runs, otherwise 'new'
+        resume_display = args.resume if args.resume else "new"
 
         # Send launch info (informational)
         _ch, _tgt = detect_channel(args.session or "")
+        trace_live(token, args.session, args.trace_live, "[RUN_TASK][START]",
+                   f"project={project} mode={args.completion_mode} limit={iter_budget} run_id={run_id}", thread_id, reply_to_msg_id)
         if _tgt and token:
             launch_parts = [f"🚀 *Claude Code started*"]
             if args.session_label:
                 launch_parts.append(f"*Label:* {args.session_label}")
             launch_parts.append(f"*Project:* {project}")
             launch_parts.append(f"*Timeout:* {fmt_duration(args.timeout)}")
-            if args.resume:
-                launch_parts.append(f"*Resume:* {args.resume[:12]}...")
+            launch_parts.append(f"*Mode:* {args.completion_mode}")
+            launch_parts.append(f"*Iteration limit:* {iter_budget}")
+            launch_parts.append(f"*Resume:* {resume_display}")
             launch_parts.append(f"*PID:* {os.getpid()}")
             # Build launch message: use HTML + expandable blockquote for prompt
             def _esc(s: str) -> str:
@@ -825,8 +994,9 @@ def main():
                 html_parts.append(f"<b>Label:</b> {_esc(args.session_label)}")
             html_parts.append(f"<b>Project:</b> {_esc(str(project))}")
             html_parts.append(f"<b>Timeout:</b> {_esc(fmt_duration(args.timeout))}")
-            if args.resume:
-                html_parts.append(f"<b>Resume:</b> {_esc(args.resume[:12])}...")
+            html_parts.append(f"<b>Mode:</b> {_esc(args.completion_mode)}")
+            html_parts.append(f"<b>Iteration limit:</b> {_esc(str(iter_budget))}")
+            html_parts.append(f"<b>Resume:</b> {_esc(resume_display)}")
             html_parts.append(f"<b>PID:</b> {os.getpid()}")
             prompt_preview = args.task[:3500] + ("…" if len(args.task) > 3500 else "")
             html_parts.append(f"<b>Prompt:</b>\n<blockquote expandable>{_esc(prompt_preview)}</blockquote>")
@@ -862,7 +1032,8 @@ def main():
                         "try:\n"
                         "    import urllib.request\n"
                         f"    raw = sys.argv[1] if len(sys.argv) > 1 else 'Progress update'\n"
-                        f"    msg = '📡 🟢 CC: ' + raw\n"
+                        f"    prefix = '📡 🟢 CC: '\n"
+                        f"    msg = raw if raw.startswith(prefix) else (prefix + raw)\n"
                         f"    payload = json.dumps({{'chat_id': '{_tgt}', 'text': msg, "
                         f"'message_thread_id': {thread_id}, 'disable_notification': True}}).encode()\n"
                         f"    req = urllib.request.Request("
@@ -911,6 +1082,7 @@ def main():
             "last_event_time": time.time(),
             "output_tokens": 0,
             "chunks_since_heartbeat": 0,
+            "active_subagent_ids": set(),
         }
 
         start = time.time()
@@ -957,6 +1129,7 @@ def main():
                     status = "🔴"
 
                 parts = [f"{status} CC ({mins}min)"]
+                parts.append(f"sub:{len(state['active_subagent_ids'])}")
                 if state["output_tokens"] > 0:
                     parts.append(f"{format_tokens(state['output_tokens'])} tok")
                 if state["tool_calls"] > 0:
@@ -989,7 +1162,9 @@ def main():
                     f"❌ Claude Code resume failed\n\n"
                     f"Session ID `{args.resume}` not found or expired.\n\n"
                     f"**Suggestion:** Start a fresh session without --resume flag.",
-                    thread_id=thread_id, notify_session_id=notify_session_id, reply_to=reply_to_msg_id)
+                    thread_id=thread_id, notify_session_id=notify_session_id, reply_to=reply_to_msg_id, completion_mode=args.completion_mode,
+                           exit_code=exit_code, project_name=str(project.name), output_file_path=output_file, iter_budget=iter_budget,
+                           trace_enabled=args.trace_live, run_id=run_id, wake_id=wake_id, state_path=state_path)
                 print("📨 Resume failure notified", file=sys.stderr)
             return  # Exit early, don't process output
 
@@ -1049,6 +1224,8 @@ def main():
 
         # Notify session with result
         if args.session and token:
+            trace_live(token, args.session, args.trace_live, "[RUN_TASK][COMPLETE]",
+                       f"exit={exit_code} output={output_file} size={output_size} run_id={run_id} wake_id={wake_id}", thread_id, reply_to_msg_id)
             def _e(s: str) -> str:
                 return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -1106,7 +1283,9 @@ def main():
 
             notify_session(token, args.session, group_jid, msg,
                            thread_id=thread_id, notify_session_id=notify_session_id,
-                           reply_to=reply_to_msg_id, html_msg=html_msg)
+                           reply_to=reply_to_msg_id, html_msg=html_msg, completion_mode=args.completion_mode,
+                           exit_code=exit_code, project_name=str(project.name), output_file_path=output_file, iter_budget=iter_budget,
+                           trace_enabled=args.trace_live, run_id=run_id, wake_id=wake_id, state_path=state_path)
             print("📨 Session notified", file=sys.stderr)
 
     except Exception as e:
@@ -1124,7 +1303,9 @@ def main():
                     f"💥 Claude Code script crashed!\n\n"
                     f"**Task:** {args.task[:200]}\n"
                     f"**Error:** {str(e)[:500]}",
-                    thread_id=thread_id, notify_session_id=notify_session_id, reply_to=reply_to_msg_id)
+                    thread_id=thread_id, notify_session_id=notify_session_id, reply_to=reply_to_msg_id, completion_mode=args.completion_mode,
+                           exit_code=exit_code, project_name=str(project.name), output_file_path=output_file, iter_budget=iter_budget,
+                           trace_enabled=args.trace_live, run_id=run_id, wake_id=wake_id, state_path=state_path)
             except Exception:
                 pass
 

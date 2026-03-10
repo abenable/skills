@@ -3,11 +3,16 @@
   "slug": "claude-code-task",
   "displayName": "Claude Code Task",
   "latest": {
-    "version": "1.2.3",
-    "publishedAt": 1771896783899,
-    "commit": "https://github.com/openclaw/skills/commit/8c0abad5574c8dfab534db75cf82fb6a16402a7d"
+    "version": "1.2.5",
+    "publishedAt": 1772955944705,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.3",
+      "publishedAt": 1771896783899,
+      "commit": "https://github.com/openclaw/skills/commit/8c0abad5574c8dfab534db75cf82fb6a16402a7d"
+    },
     {
       "version": "1.2.2",
       "publishedAt": 1771844822555,

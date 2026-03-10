@@ -3,9 +3,15 @@
   "slug": "tugou-monitor",
   "displayName": "土狗气象台",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772802186841,
-    "commit": "https://github.com/openclaw/skills/commit/a3c864d54b1f3db5ec8264c7f7bfa5d311f0c6cb"
+    "version": "1.0.3",
+    "publishedAt": 1773156794458,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772802186841,
+      "commit": "https://github.com/openclaw/skills/commit/a3c864d54b1f3db5ec8264c7f7bfa5d311f0c6cb"
+    }
+  ]
 }

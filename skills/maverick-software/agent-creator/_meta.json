@@ -1,0 +1,11 @@
+{
+  "owner": "maverick-software",
+  "slug": "agent-creator",
+  "displayName": "Agent Creator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773091030909,
+    "commit": null
+  },
+  "history": []
+}

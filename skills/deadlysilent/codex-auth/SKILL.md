@@ -49,6 +49,7 @@ python3 skills/codex-auth/scripts/codex_auth.py status
 
 ## Notes
 - Uses the same OpenAI Codex OAuth constants/method as OpenClaw onboarding (`auth.openai.com` + localhost callback).
+- OAuth success here does not guarantee `chatgpt.com/backend-api/wham/usage` acceptance; usage endpoint may reject token/session format with `401` and should be handled by usage/profiler skills.
 - Endpoint trust boundary: OpenAI auth hosts + localhost callback flow only; do not send callbacks/tokens to third-party hosts.
 - Writes `~/.openclaw/agents/main/agent/auth-profiles.json` with file locking to reduce race risk while gateway is running.
 - Profile IDs map as:

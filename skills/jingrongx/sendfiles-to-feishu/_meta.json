@@ -1,0 +1,11 @@
+{
+  "owner": "jingrongx",
+  "slug": "sendfiles-to-feishu",
+  "displayName": "支持发送文件到飞书，大于20MB自动分卷裁切",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1773123168060,
+    "commit": null
+  },
+  "history": []
+}

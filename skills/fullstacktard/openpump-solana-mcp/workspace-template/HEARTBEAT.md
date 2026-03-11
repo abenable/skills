@@ -1,6 +1,8 @@
-# HEARTBEAT -- 30-Minute Autonomous Check Cycle
+# HEARTBEAT -- 30-Minute Monitoring Cycle
 
 This checklist runs automatically every 30 minutes when OpenClaw fires the heartbeat timer. Execute every step in order. Do not skip steps even if the previous heartbeat was recent.
+
+> **Important:** All sell/buy actions identified during the heartbeat must be **presented to the user for approval** before execution, unless the user has granted explicit standing instructions for automated exits (e.g., "auto-execute stop-losses").
 
 ## Step 1: Check All Open Positions
 
@@ -33,11 +35,11 @@ If `get-token-market-info` returns ANY of:
 - Volume dropped to 0 in the last hour
 - Token data is null or unavailable (token may have been removed)
 
-**Action:** Sell immediately with `turbo` priority.
+**Recommendation:** Sell immediately with `turbo` priority.
 ```
 sell-token (walletId, mint, tokenAmount: "all", priorityLevel: "turbo")
 ```
-**Log:** "EMERGENCY EXIT: [mint] -- [reason]. Sold at turbo priority."
+**Present to user:** "EMERGENCY EXIT RECOMMENDED: [mint] -- [reason]. Recommend selling at turbo priority. Approve?"
 
 ### 2b. Stop-Loss (-50% from entry)
 
@@ -45,41 +47,41 @@ Compare the current SOL value (from `get-token-quote` sell) to the entry cost.
 
 If current value <= 50% of entry cost:
 
-**Action:** Sell immediately with `fast` priority.
+**Recommendation:** Sell with `fast` priority.
 ```
 sell-token (walletId, mint, tokenAmount: "all", priorityLevel: "fast")
 ```
-**Log:** "STOP-LOSS: [mint] -- down [X]% from entry. Sold."
+**Present to user:** "STOP-LOSS TRIGGERED: [mint] -- down [X]% from entry. Recommend selling. Approve?"
 
 ### 2c. Take-Profit (+200% from entry)
 
 If current value >= 300% of entry cost (i.e., +200% gain):
 
-**Action:** Sell with `normal` priority.
+**Recommendation:** Sell with `normal` priority.
 ```
 sell-token (walletId, mint, tokenAmount: "all", priorityLevel: "normal")
 ```
-**Log:** "TAKE-PROFIT: [mint] -- up [X]% from entry. Sold."
+**Present to user:** "TAKE-PROFIT TRIGGERED: [mint] -- up [X]% from entry. Recommend selling. Approve?"
 
 ### 2d. Trailing Stop (-30% from peak, if position has been up >100%)
 
 If the position has at any point been up >100% from entry, and current value is >30% below the highest observed value:
 
-**Action:** Sell with `fast` priority.
+**Recommendation:** Sell with `fast` priority.
 ```
 sell-token (walletId, mint, tokenAmount: "all", priorityLevel: "fast")
 ```
-**Log:** "TRAILING STOP: [mint] -- dropped [X]% from peak of [Y] SOL. Sold."
+**Present to user:** "TRAILING STOP: [mint] -- dropped [X]% from peak of [Y] SOL. Recommend selling. Approve?"
 
 ### 2e. Time Decay (4 hours without +20% movement)
 
 If position was entered >4 hours ago and has never been up >20% from entry:
 
-**Action:** Sell with `normal` priority.
+**Recommendation:** Sell with `normal` priority.
 ```
 sell-token (walletId, mint, tokenAmount: "all", priorityLevel: "normal")
 ```
-**Log:** "TIME DECAY: [mint] -- held for [X]h with only [Y]% movement. Sold."
+**Present to user:** "TIME DECAY: [mint] -- held for [X]h with only [Y]% movement. Recommend selling. Approve?"
 
 ### 2f. Risk Deterioration
 
@@ -87,11 +89,11 @@ If `get-token-market-info` shows risk metrics have worsened since entry:
 - Sniper count has increased by >3 since entry
 - Insider holding % has increased by >10 percentage points since entry
 
-**Action:** Consider selling. If both conditions are met, sell.
+**Recommendation:** Sell with `fast` priority.
 ```
 sell-token (walletId, mint, tokenAmount: "all", priorityLevel: "fast")
 ```
-**Log:** "RISK EXIT: [mint] -- risk metrics deteriorated: [details]. Sold."
+**Present to user:** "RISK EXIT: [mint] -- risk metrics deteriorated: [details]. Recommend selling. Approve?"
 
 ## Step 3: Scan for New Opportunities
 

@@ -1,11 +1,17 @@
 {
   "owner": "fullstacktard",
   "slug": "openpump-solana-mcp",
-  "displayName": "OpenPump Solana MCP",
+  "displayName": "Openpump Solana Mcp",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772946994599,
-    "commit": "https://github.com/openclaw/skills/commit/40dce2a502085fc49b4d8abd9db8019af06ab6ce"
+    "version": "1.0.1",
+    "publishedAt": 1773034748672,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772946994599,
+      "commit": "https://github.com/openclaw/skills/commit/40dce2a502085fc49b4d8abd9db8019af06ab6ce"
+    }
+  ]
 }

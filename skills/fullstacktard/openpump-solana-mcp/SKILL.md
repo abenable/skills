@@ -2,11 +2,12 @@
 name: openpump-solana-mcp
 description: >
   Solana token launch and trading tools via the OpenPump MCP server.
+  All trading actions require explicit user confirmation before execution.
   Use when creating tokens on pump.fun, buying or selling tokens,
   transferring SOL or SPL tokens, checking wallet balances, managing wallets,
   getting token quotes, or monitoring portfolio and creator fees.
   Covers all pump.fun operations including bundle buys, bundle sells,
-  Jito priority, bonding curve analytics, and trading workflows.
+  Jito priority, bonding curve analytics, and user-supervised trading workflows.
 version: "1.0.0"
 author: openpump
 license: MIT
@@ -72,7 +73,7 @@ Add the following to your `~/.openclaw/openclaw.json` under the `mcpServers` key
   "mcpServers": {
     "openpump": {
       "command": "npx",
-      "args": ["-y", "@openpump/mcp-server@latest"],
+      "args": ["-y", "@openpump/mcp-server@1.0.0"],
       "env": {
         "OPENPUMP_API_KEY": "${OPENPUMP_API_KEY}"
       }
@@ -232,7 +233,10 @@ If you prefer a remote connection instead of a local stdio process:
 3. transfer-sol (walletId, toAddress, amountLamports) -- execute
 ```
 
-## Autonomous Agent Patterns
+## Agent Patterns (User-Supervised)
+
+> **Important:** All trading actions require explicit user approval before execution.
+> These patterns describe *analysis workflows* — the agent recommends actions, the user confirms.
 
 ### Heartbeat: Portfolio Monitor
 
@@ -242,14 +246,14 @@ Configure OpenClaw's heartbeat (runs every 30 minutes) to monitor your positions
 Every heartbeat cycle:
 1. get-token-holdings -- check all open positions
 2. get-token-market-info (per mint) -- current price and risk metrics
-3. If any position is down > 50%: sell-token to stop losses
-4. If any position is up > 200%: sell-token to take profits
-5. Report P&L summary
+3. If any position is down > 50%: RECOMMEND sell to stop losses (await user confirmation)
+4. If any position is up > 200%: RECOMMEND sell to take profits (await user confirmation)
+5. Report P&L summary to user
 ```
 
-### Autonomous Token Scanner
+### Token Scanner
 
-Use OpenClaw's event loop to scan for new opportunities:
+Use OpenClaw to scan for opportunities and surface them for review:
 
 ```
 On each cycle:
@@ -258,13 +262,14 @@ On each cycle:
 3. get-token-market-info (mint) -- check risk metrics
 4. If safety score > 70 AND liquidity > 5 SOL AND dev holdings < 10%:
    - get-token-quote (buy preview)
-   - buy-token (within position size limits)
+   - PRESENT opportunity to user with full analysis
+   - WAIT for user approval before executing buy-token
 5. Log reasoning and decision
 ```
 
 ### Copy Trader
 
-Follow whale wallets and mirror their trades:
+Follow whale wallets and surface trades for review:
 
 ```
 On whale activity detected:
@@ -272,8 +277,9 @@ On whale activity detected:
 2. get-token-info (mint) -- is it on pump.fun?
 3. get-token-market-info (mint) -- safety check
 4. get-token-quote (buy, proportional amount)
-5. buy-token (if within risk limits)
-6. Set exit conditions (stop-loss, take-profit)
+5. PRESENT trade recommendation to user with risk analysis
+6. WAIT for user approval before executing buy-token
+7. Set exit conditions (stop-loss, take-profit)
 ```
 
 ## Safety Guardrails

@@ -6,92 +6,51 @@
 
 🎨 Generate **images and videos** using [Sogni AI](https://sogni.ai)'s decentralized GPU network.
 
-Works as an [MCP server](https://modelcontextprotocol.io/) for **Claude Code** and **Claude Desktop**, and as an [OpenClaw](https://github.com/OpenClaw/OpenClaw) plugin.
+Works as:
+- an [OpenClaw](https://github.com/OpenClaw/OpenClaw) plugin (recommended)
+- a skill source for Manus AI agent
+- an [MCP server](https://modelcontextprotocol.io/) for **Claude Code** and **Claude Desktop**
 
-## Installation
+## Quick Start (OpenClaw + Manus)
 
-### Claude Code (one command)
+1. Create Sogni credentials (one-time): see [Setup](#setup).
+2. For OpenClaw, install the plugin:
 
 ```bash
-claude mcp add sogni -- npx -y -p sogni-gen sogni-gen-mcp
+openclaw plugins install sogni-gen
 ```
 
-After install, just ask Claude things like:
+3. For Manus AI agent, point it to this repository:
+
+```
+https://github.com/Sogni-AI/openclaw-sogni-gen
+```
+
+Then ask your agent:
 - "Generate an image of a sunset over mountains"
 - "Make a video of a cat playing piano"
 - "Edit this image to add a rainbow"
 - "Check my Sogni balance"
+- "Turn my selfie into James bond using photobooth"
+- "Animate the last 3 images you generated together"
 
-### Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "sogni": {
-      "command": "npx",
-      "args": ["-y", "-p", "sogni-gen", "sogni-gen-mcp"]
-    }
-  }
-}
-```
-
-Restart Claude Desktop after saving. The same natural-language commands work.
-
-> **Note:** Both Claude Code and Claude Desktop require Sogni credentials — see [Setup](#setup) below.
-
-### Global npm Install (CLI + MCP)
-
-```bash
-npm install -g sogni-gen
-sogni-gen --version
-```
-
-If `sogni-gen-mcp` is on your `PATH`, you can register it directly:
-
-```bash
-# Claude Code using globally installed binary
-claude mcp add sogni -- sogni-gen-mcp
-```
-
-Claude Desktop config using global binary:
-
-```json
-{
-  "mcpServers": {
-    "sogni": {
-      "command": "sogni-gen-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-### Quick Install (OpenClaw) - Recommended
-
-Point your OpenClaw to the [`llm.txt`](https://raw.githubusercontent.com/Sogni-AI/openclaw-sogni-gen/main/llm.txt) and everything is set up — just paste the URL into Telegram, WhatsApp, or iMessages and the bot handles image and video generation automatically.
-
-```
-https://raw.githubusercontent.com/Sogni-AI/openclaw-sogni-gen/main/llm.txt
-```
+## OpenClaw Installation (Recommended)
 
 ### Plugin Install
 
-This repo also ships an `openclaw.plugin.json` manifest so OpenClaw can automatically download and set everything up:
-
 ```bash
-# One command to install from GitHub
-openclaw plugins install git@github.com:Sogni-AI/openclaw-sogni-gen.git
-
-# Or if published to npm
 openclaw plugins install sogni-gen
 ```
+
+The installed plugin loads its behavior from [`SKILL.md`](./SKILL.md) via [`openclaw.plugin.json`](./openclaw.plugin.json).
+
+### Optional Install Helper
+
+[`llm.txt`](https://raw.githubusercontent.com/Sogni-AI/openclaw-sogni-gen/main/llm.txt) is now only a lightweight install/setup helper. It is not the primary behavior source for the installed OpenClaw plugin.
 
 ### Manual Installation
 
 ```bash
-# Clone the repository
 git clone git@github.com:Sogni-AI/openclaw-sogni-gen.git
 cd openclaw-sogni-gen
 npm install
@@ -99,7 +58,7 @@ npm install
 
 ### OpenClaw Config Defaults
 
-If OpenClaw loads this plugin, `sogni-gen` will read defaults from your OpenClaw config:
+If OpenClaw loads this plugin, `sogni-gen` reads defaults from your OpenClaw config:
 
 ```json
 {
@@ -115,6 +74,9 @@ If OpenClaw loads this plugin, `sogni-gen` will read defaults from your OpenClaw
             "t2v": "wan_v2.2-14b-fp8_t2v_lightx2v",
             "i2v": "wan_v2.2-14b-fp8_i2v_lightx2v",
             "s2v": "wan_v2.2-14b-fp8_s2v_lightx2v",
+            "ia2v": "ltx2-19b-fp8_ia2v_distilled",
+            "a2v": "ltx2-19b-fp8_a2v_distilled",
+            "v2v": "ltx2-19b-fp8_v2v_distilled",
             "animate-move": "wan_v2.2-14b-fp8_animate-move_lightx2v",
             "animate-replace": "wan_v2.2-14b-fp8_animate-replace_lightx2v"
           },
@@ -143,9 +105,7 @@ If OpenClaw loads this plugin, `sogni-gen` will read defaults from your OpenClaw
 }
 ```
 
-CLI flags always override these defaults.
-If your OpenClaw config lives elsewhere, set `OPENCLAW_CONFIG_PATH`.
-Seed strategies: `prompt-hash` (deterministic) or `random`.
+CLI flags always override these defaults. If your OpenClaw config lives elsewhere, set `OPENCLAW_CONFIG_PATH`. Seed strategies: `prompt-hash` (deterministic) or `random`.
 
 ## Setup
 
@@ -155,11 +115,15 @@ Seed strategies: `prompt-hash` (deterministic) or `random`.
 ```bash
 mkdir -p ~/.config/sogni
 cat > ~/.config/sogni/credentials << 'EOF'
-SOGNI_USERNAME=your_username
-SOGNI_PASSWORD=your_password
+SOGNI_API_KEY=your_api_key
+# or:
+# SOGNI_USERNAME=your_username
+# SOGNI_PASSWORD=your_password
 EOF
 chmod 600 ~/.config/sogni/credentials
 ```
+
+You can also skip the file and set `SOGNI_API_KEY`, or `SOGNI_USERNAME` + `SOGNI_PASSWORD`, in your environment.
 
 ### Filesystem Paths and Overrides
 
@@ -179,6 +143,58 @@ Override with environment variables:
 - `OPENCLAW_CONFIG_PATH`
 - `SOGNI_DOWNLOADS_DIR` (MCP)
 - `SOGNI_MCP_SAVE_DOWNLOADS=0` (disable MCP local file writes)
+
+## Claude Code and Claude Desktop (Optional)
+
+### Claude Code (one command)
+
+```bash
+claude mcp add sogni -- npx -y -p sogni-gen sogni-gen-mcp
+```
+
+### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sogni": {
+      "command": "npx",
+      "args": ["-y", "-p", "sogni-gen", "sogni-gen-mcp"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop after saving.
+
+### Global npm Install (CLI + MCP)
+
+```bash
+npm install -g sogni-gen
+sogni-gen --version
+```
+
+If `sogni-gen-mcp` is on your `PATH`, you can register it directly:
+
+```bash
+# Claude Code using globally installed binary
+claude mcp add sogni -- sogni-gen-mcp
+```
+
+Claude Desktop config using global binary:
+
+```json
+{
+  "mcpServers": {
+    "sogni": {
+      "command": "sogni-gen-mcp",
+      "args": []
+    }
+  }
+}
+```
 
 ## Usage
 
@@ -237,6 +253,18 @@ node sogni-gen.mjs --video --ref cat.jpg "gentle camera pan"
 node sogni-gen.mjs --video --ref face.jpg --ref-audio speech.m4a \
   -m wan_v2.2-14b-fp8_s2v_lightx2v "lip sync talking head"
 
+# Image+audio-to-video (ia2v, LTX)
+node sogni-gen.mjs --video --workflow ia2v --ref cover.jpg --ref-audio song.mp3 \
+  "music video with synchronized motion"
+
+# Audio-to-video (a2v, LTX)
+node sogni-gen.mjs --video --workflow a2v --ref-audio song.mp3 \
+  "abstract audio-reactive visualizer"
+
+# LTX-2.3 text-to-video
+node sogni-gen.mjs --video -m ltx23-22b-fp8_t2v_distilled --duration 20 \
+  "A wide cinematic aerial shot opens over steep tropical cliffs at golden hour, warm sunlight grazing the rock faces while sea mist drifts above the water below. Palm trees bend gently along the ridge as waves roll against the shoreline, leaving bright bands of foam across the dark stone. The camera glides forward in one continuous pass, revealing more of the coastline as sunlight flickers across wet surfaces and distant birds wheel through the haze. The scene holds a calm, upscale travel-film mood with smooth stabilized motion and crisp environmental detail."
+
 # Animate (motion transfer)
 node sogni-gen.mjs --video --ref subject.jpg --ref-video motion.mp4 \
   --workflow animate-move "transfer motion"
@@ -244,6 +272,27 @@ node sogni-gen.mjs --video --ref subject.jpg --ref-video motion.mp4 \
 # Estimate video cost (requires --steps)
 node sogni-gen.mjs --video --estimate-video-cost --steps 20 \
   -m wan_v2.2-14b-fp8_t2v_lightx2v "ocean waves at sunset"
+```
+
+## LTX-2.3 Prompting Guide
+
+When you use `ltx23-22b-fp8_t2v_distilled`, do not feed it short tag prompts like `"cinematic drone shot over tropical cliffs"`. LTX-2.3 renders more reliably from a dense natural-language scene description.
+
+- Write one unbroken paragraph with no line breaks, bullets, headers, or tag blocks.
+- Use 4-8 flowing present-tense sentences describing one continuous shot, not a montage.
+- Start with shot scale and scene identity, then cover environment, time of day, textures, and named light sources.
+- Keep characters and objects concrete and stable. Describe one main action thread from start to finish.
+- If the user wants dialogue, weave it into the prose with the speaker and delivery identified inline.
+- Express mood through visible behavior, motion, and sound cues instead of vague adjectives.
+- Use positive phrasing. Avoid script formatting, negative prompts, on-screen text/logo requests, and generic filler words like "beautiful" or "nice".
+- Match scene density to clip length. For the default short clips, describe one main beat rather than several unrelated actions.
+
+Example rewrite:
+
+```text
+User ask: "make a 4k video of a woman in a neon alley"
+
+LTX-2.3 prompt: "A medium cinematic shot frames a woman in her 30s standing in a rain-soaked neon alley at night, violet and amber signs reflecting across the wet pavement while warm steam drifts from street vents. She wears a dark trench coat with damp strands of black hair clinging near her cheek as light glances across the fabric texture and the brick walls behind her. She turns toward the camera and steps forward with measured focus, one hand tightening around the strap of her bag while rain taps softly on the metal fire escape and a distant train hum rolls through the block. The camera performs a slow push-in as her jaw sets and her breathing steadies, maintaining smooth stabilized motion and a tense urban-thriller mood."
 ```
 
 ## Photobooth (Face Transfer)
@@ -272,7 +321,8 @@ Multi-angle mode auto-builds the `<sks>` prompt and applies the `multiple_angles
 
 ## Video Sizing Rules (Aspect Ratios)
 
-- Video dimensions are constrained by the API: min 480px, max 1536px, and both `--width`/`--height` must be divisible by 16.
+- WAN models use dimensions divisible by 16, min 480px, max 1536px.
+- LTX family models (`ltx2-*`, `ltx23-*`) use dimensions divisible by 64. A practical default range is 768px to 1920px.
 - The script auto-normalizes video sizes to satisfy those constraints.
 - For i2v (and any workflow using `--ref` / `--ref-end`), the client wrapper resizes the reference image with a strict aspect-fit (`fit: inside`) and then uses the *resized reference dimensions* as the final video size. Because that resize uses rounding, a “valid” requested size can still produce an invalid final size (example: `1024x1536` requested, but ref becomes `1024x1535`).
 - `sogni-gen` detects this for local refs and will auto-adjust the requested size to a nearby safe size so the resized reference is divisible by 16.
@@ -357,14 +407,12 @@ Multi-angle mode auto-builds the `<sks>` prompt and applies the `multiple_angles
 | `wan_v2.2-14b-fp8_s2v_lightx2v` | ~5min | Sound-to-video |
 | `wan_v2.2-14b-fp8_animate-move_lightx2v` | ~5min | Animate-move |
 | `wan_v2.2-14b-fp8_animate-replace_lightx2v` | ~5min | Animate-replace |
-
-## With OpenClaw
-
-Once installed, just ask your agent:
-
-> "Draw me a picture of a slothicorn eating a banana"
-
-The agent will generate the image and send it to your chat.
+| `ltx2-19b-fp8_t2v_distilled` | ~2-3min | LTX-2 text-to-video |
+| `ltx2-19b-fp8_i2v_distilled` | ~2-3min | LTX-2 image-to-video |
+| `ltx2-19b-fp8_ia2v_distilled` | ~2-3min | LTX-2 image+audio-to-video |
+| `ltx2-19b-fp8_a2v_distilled` | ~2-3min | LTX-2 audio-to-video |
+| `ltx2-19b-fp8_v2v_distilled` | ~3min | LTX-2 video-to-video with ControlNet |
+| `ltx23-22b-fp8_t2v_distilled` | ~2-3min | LTX-2.3 text-to-video |
 
 ## License
 

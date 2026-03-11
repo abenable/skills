@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "digital-ocean-integration",
+  "displayName": "Digital Ocean",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773088966877,
+    "commit": null
+  },
+  "history": []
+}

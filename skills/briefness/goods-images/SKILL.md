@@ -36,6 +36,36 @@ description: "Use when the user wants to generate product detail images or carou
 
 **⚠️ 用户可能只要轮播图或只要详情图。** 如果用户明确说只要其中一种，跳过另一种。不确定时默认两种都生成。
 
+## ⚠️ 执行清单（必读）
+
+**你必须生成 14 张图片，不是 1 张！** 按以下步骤逐一执行：
+
+### 轮播图（5张）
+1. 用 `generate_image` 生成模特图1（传入用户原图作为 ImagePaths）
+2. 用 `generate_image` 生成模特图2（传入用户原图作为 ImagePaths）
+3. 用 `generate_image` 生成模特图3（传入用户原图作为 ImagePaths）
+4. 用 PIL 脚本或 `generate_image` 在模特图上叠加 Logo + 活动条 + 卖点关键词，生成 carousel_01 ~ carousel_04
+5. 用 PIL 脚本或 `generate_image` 生成 carousel_05（白底图，仅 Logo）
+
+### 详情图（9张）
+6. `generate_image` → 主图封面（传入原图）
+7. `generate_image` → 卖点1（传入原图）
+8. `generate_image` → 卖点2（传入原图）
+9. `generate_image` → 卖点3（传入原图）
+10. `generate_image` → 细节标注图（传入原图）
+11. `generate_image` → 穿着/使用场景
+12. `generate_image` → 产品参数表（传入原图）
+13. `generate_image` → 尺码/规格表
+14. `generate_image` → 售后保障
+
+### 关键规则
+- **每张图都要单独调用一次 `generate_image`**，不要试图一次生成多张
+- **必须传入用户原图作为 ImagePaths**，否则 AI 会画出不一样的商品
+- **Logo 和活动文字不要写在 generate_image 的 prompt 里**（AI 画中文会变形），应该用 PIL 后处理
+- **背景不要纯白**，要有场景感
+
+---
+
 ## 流程
 
 ```
@@ -268,6 +298,11 @@ add_overlay('model2.png', 'carousel_02.jpg', logo, promos, keywords)
 add_overlay('model3.png', 'carousel_03.jpg', logo, promos, keywords)
 add_overlay('product.jpg', 'carousel_04.jpg', logo, promos, keywords)
 add_overlay('product.jpg', 'carousel_05.jpg', logo)  # 白底图，无活动条/卖点
+```
+
+**⚠️ 执行完成后删除中间产物：**
+```bash
+rm -f /tmp/product-details/overlay.py
 ```
 
 #### 方案 2（降级）：`generate_image` 直接生成

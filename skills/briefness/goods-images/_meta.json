@@ -3,9 +3,15 @@
   "slug": "goods-images",
   "displayName": "goods-images",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773136749318,
-    "commit": "https://github.com/openclaw/skills/commit/862e180f875e752fb67880efdb32473a8550e2fd"
+    "version": "1.0.1",
+    "publishedAt": 1773140104698,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773136749318,
+      "commit": "https://github.com/openclaw/skills/commit/862e180f875e752fb67880efdb32473a8550e2fd"
+    }
+  ]
 }

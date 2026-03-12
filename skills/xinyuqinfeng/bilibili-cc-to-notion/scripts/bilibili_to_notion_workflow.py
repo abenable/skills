@@ -102,7 +102,7 @@ def main():
     cmd_parts = [
         "python3 create_notion_notes_with_images.py",
         f"--token '{args.token}'",
-        f"--database-id '{args.database - id}'",
+        f"--database-id '{args.database_id}'",
         f"--video-title '{video_title}'",
         f"--video-url '{args.url}'",
         f"--segments '{json.dumps(segments)}'",

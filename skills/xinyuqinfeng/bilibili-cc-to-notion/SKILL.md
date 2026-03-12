@@ -335,6 +335,26 @@ export NOTION_API_KEY="secret_xxx"  # 你的Notion API token
 export NOTION_DATABASE_ID="your_database_id"  # 目标数据库ID
 ```
 
+### ⚠️ 安全说明 / Security Notes
+
+**凭证管理 / Credentials**：
+- 本技能需要 Notion API Token (`NOTION_API_KEY`) 和数据库 ID (`NOTION_DATABASE_ID`)
+- 请勿将真实 Token 提交到公开仓库；使用环境变量或安全 vaults
+- Token 仅用于调用 Notion API，不会发送到其他服务器
+
+**脚本文件 / Script Files**：
+- `process_subtitles.py` 已不再由大模型调用，仅保留作为参考或备用
+- 核心流程通过大模型生成的结构化 JSON/Markdown 驱动脚本执行
+
+**命令行安全 / Command Line Safety**：
+- 部分脚本（如 `bilibili_to_notion_workflow.py`）使用 `shell=True` 执行命令
+- 建议在可信环境下使用，避免让模型处理包含特殊字符的未校验输入
+
+**依赖来源 / Dependencies**：
+- BBDown：官方 GitHub Releases（可信来源）
+- FFmpeg：系统包管理器安装（可信来源）
+- Python requests 库：PyPI（可信来源）
+
 ### 4. 安装依赖
 
 ```bash

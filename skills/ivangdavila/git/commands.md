@@ -1,6 +1,6 @@
 # Essential Commands
 
-## Setup
+## Getting Started
 
 ```bash
 git config --global user.name "Your Name"

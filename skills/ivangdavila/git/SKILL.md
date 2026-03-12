@@ -1,29 +1,16 @@
 ---
-name: Git (Essentials + Workflows + Advanced)
+name: Git
 slug: git
-version: 1.0.7
-description: Full version control coverage with essential commands, team workflows, branching strategies, and recovery techniques.
+version: 1.0.8
+description: "Git commits, branches, rebases, merges, conflict resolution, history recovery, team workflows, and the commands needed for safe day-to-day version control. Use when (1) the task touches Git, a repository, commits, branches, merges, rebases, or pull requests; (2) history safety, collaboration, or recovery matter; (3) the agent should automatically apply Git discipline instead of improvising."
 homepage: https://clawic.com/skills/git
-changelog: Translated all auxiliary files to English
+changelog: Simplified the skill name and kept the stateless activation guidance
 metadata: {"clawdbot":{"emoji":"📚","requires":{"bins":["git"]},"os":["linux","darwin","win32"]}}
 ---
 
-## Setup
-
-On first use, read `setup.md`. Default: best practices mode (no config needed).
-
 ## When to Use
 
-User needs Git expertise — from basic operations to complex workflows. Agent handles branching, merging, rebasing, conflict resolution, and team collaboration patterns.
-
-## Architecture
-
-Memory in `~/git/`. See `memory-template.md` for structure.
-
-```
-~/git/
-└── memory.md    # User preferences (optional)
-```
+Use when the task involves Git repositories, branches, commits, merges, rebases, pull requests, conflict resolution, history inspection, or recovery. This skill is stateless and should be applied by default whenever Git work is part of the job.
 
 ## Quick Reference
 
@@ -35,8 +22,6 @@ Memory in `~/git/`. See `memory-template.md` for structure.
 | Conflict resolution | `conflicts.md` |
 | History and recovery | `history.md` |
 | Team workflows | `collaboration.md` |
-| Setup | `setup.md` |
-| Memory | `memory-template.md` |
 
 ## Core Rules
 

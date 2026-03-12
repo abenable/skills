@@ -3,11 +3,16 @@
   "slug": "product-strategist",
   "displayName": "Product Strategist",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770402579059,
-    "commit": "https://github.com/openclaw/skills/commit/7d7f91dc04fc54514e244f41135285eb05ce7002"
+    "version": "2.1.1",
+    "publishedAt": 1773070359043,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770402579059,
+      "commit": "https://github.com/openclaw/skills/commit/7d7f91dc04fc54514e244f41135285eb05ce7002"
+    },
     {
       "version": "0.1.1",
       "publishedAt": 1769779333543,

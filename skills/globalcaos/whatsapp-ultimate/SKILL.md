@@ -1,6 +1,7 @@
 ---
 name: whatsapp-ultimate
-version: 3.5.1
+version: 1.4.0
+version: 3.6.0
 description: "WhatsApp skill with a 3-rule security gate. Your agent speaks only when spoken to — in the right chat, by the right person."
 metadata:
   openclaw:
@@ -256,6 +257,33 @@ To react/edit/unsend, you need the message ID. Incoming messages include this in
 
 ---
 
+## Media Download (from History)
+
+Download images, videos, documents, and audio from past WhatsApp messages stored in the history database. Uses Baileys' `downloadContentFromMessage` with the media keys stored in `raw_json` — no active socket needed.
+
+### List Recent Media
+```bash
+cd ~/src/tinkerclaw && npx tsx src/whatsapp-history/download-media.ts --list-media [--since YYYY-MM-DD] [--chat <jid|name>] [--limit N]
+```
+
+### Download by Message ID
+```bash
+cd ~/src/tinkerclaw && npx tsx src/whatsapp-history/download-media.ts --id <messageId> [--out <directory>]
+```
+Default output: `~/.openclaw/workspace/data/wa-media/<messageId>.<ext>`
+
+### Notes
+- Media URLs on WhatsApp servers expire after ~2 weeks. Download promptly.
+- Works for: images, videos, documents, audio, stickers, voice notes.
+- Extension auto-detected from the message's mimetype.
+- The `raw_json` column in the messages table must contain the original Baileys proto (live-captured messages only, not imported .txt exports).
+
+---
+
+### 3.5.1
+
+- **Added:** Media download from history — `download-media.ts` script extracts media keys from stored `raw_json` and downloads/decrypts directly from WhatsApp CDN without needing an active socket connection.
+
 ### 3.5.0
 
 - **Added:** `ackMessage` — gateway-level instant message acknowledgment. Sends a configurable text message (e.g. ⚡) the moment an inbound message arrives, before any model inference. Fires at the same speed as `ackReaction` (emoji flip). Useful as a visual cue to distinguish your messages from bot replies in WhatsApp Web where reaction flips aren't visible.
@@ -288,10 +316,12 @@ No external services. No Docker. No CLI tools. Direct protocol integration.
 
 MIT — Part of OpenClaw
 
----
+## Pairs Well With
 
-## Links
+- [outlook-hack](https://clawhub.com/globalcaos/outlook-hack) — same philosophy for Outlook: reads everything, drafts replies, won't send
+- [teams-hack](https://clawhub.com/globalcaos/teams-hack) — Teams integration with the same browser-relay approach
+- [agent-superpowers](https://clawhub.com/globalcaos/agent-superpowers) — engineering discipline for the agent running behind these channels
 
-- OpenClaw: https://github.com/openclaw/openclaw
-- Baileys: https://github.com/WhiskeySockets/Baileys
-- ClawHub: https://clawhub.com
+👉 **https://github.com/globalcaos/tinkerclaw**
+
+_Clone it. Fork it. Break it. Make it yours._

@@ -1,0 +1,23 @@
+{
+  "name": "team-collaboration",
+  "description": "与团队协作系统交互的Skill",
+  "version": "1.0.0",
+  "tools": {
+    "auth_register": {
+      "description": "注册新用户",
+      "parameters": {
+        "username": "string",
+        "password": "string",
+        "nickname": "string",
+        "role": "string"
+      }
+    },
+    "auth_login": {
+      "description": "用户登录",
+      "parameters": {
+        "username": "string",
+        "password": "string"
+      }
+    }
+  }
+}

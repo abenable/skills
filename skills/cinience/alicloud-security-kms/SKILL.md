@@ -1,11 +1,26 @@
 ---
 name: alicloud-security-kms
-description: Manage Alibaba Cloud KeyManagementService (Kms) via OpenAPI/SDK. Use for listing resources, creating or updating configurations, querying status, and troubleshooting workflows for this product.
+description: Manage Alibaba Cloud Key Management Service (KMS) via OpenAPI/SDK. Use whenever the user needs key lifecycle/resource operations, policy/configuration changes, status inspection, or troubleshooting KMS API workflows.
+version: 1.0.0
 ---
 
 Category: service
 
 # Key Management Service
+
+## Validation
+
+```bash
+mkdir -p output/alicloud-security-kms
+python -m py_compile skills/security/key-management/alicloud-security-kms/scripts/list_openapi_meta_apis.py && echo "py_compile_ok" > output/alicloud-security-kms/validate.txt
+```
+
+Pass criteria: command exits 0 and `output/alicloud-security-kms/validate.txt` is generated.
+
+## Output And Evidence
+
+- Save KMS API discovery outputs and operation results in `output/alicloud-security-kms/`.
+- Keep at least one request parameter example per operation type.
 
 Use Alibaba Cloud OpenAPI (RPC) with official SDKs or OpenAPI Explorer to manage resources for KeyManagementService.
 
@@ -54,6 +69,12 @@ The script writes API inventory artifacts under the skill output directory.
 
 If you need to save responses or generated artifacts, write them under:
 `output/alicloud-security-kms/`
+
+## Prerequisites
+
+- Configure least-privilege Alibaba Cloud credentials before execution.
+- Prefer environment variables: `ALICLOUD_ACCESS_KEY_ID`, `ALICLOUD_ACCESS_KEY_SECRET`, optional `ALICLOUD_REGION_ID`.
+- If region is unclear, ask the user before running mutating operations.
 
 ## References
 

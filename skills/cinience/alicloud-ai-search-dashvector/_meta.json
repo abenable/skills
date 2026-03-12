@@ -3,11 +3,16 @@
   "slug": "alicloud-ai-search-dashvector",
   "displayName": "Alicloud Ai Search Dashvector",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770973177946,
-    "commit": "https://github.com/openclaw/skills/commit/618d52c981d116dbc7d9ea6d55fabd7b7e330e49"
+    "version": "1.0.3",
+    "publishedAt": 1773221877256,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770973177946,
+      "commit": "https://github.com/openclaw/skills/commit/618d52c981d116dbc7d9ea6d55fabd7b7e330e49"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770768434283,

@@ -45,18 +45,44 @@ User travel query → TripGenie skill triggered → POST to TripGenie API → Re
 
 ## Usage
 
-```bash
-curl -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/query -H "Content-Type: application/json" -d '{"token":"'"${TRIPGENIE_API_KEY}"'","query":"'"${USER_QUERY}"'","locale":"'"${LANG}"'"}' > /tmp/tripgenie-result.md
-cat /tmp/tripgenie-result.md
-```
-
-### API Parameters
+### General Query API (`/openclaw/query`)
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `token` | Yes | API token; use `TRIPGENIE_API_KEY` environment variable. |
 | `query` | Yes | User's query text. |
-| `locale` | No | Language/region; use `LANG` environment variable when available. |
+| `locale` | No | Language/region; use `LANG` when available. |
+
+```bash
+jq -n --arg token "$TRIPGENIE_API_KEY" --arg query "$USER_QUERY" --arg locale "$LANG" '{token: $token, query: $query, locale: $locale}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/query -H "Content-Type: application/json" -d @- > /tmp/tripgenie-result.md
+cat /tmp/tripgenie-result.md
+```
+
+### Airline API (`/openclaw/airline`)
+
+| Parameter | Required | Format | Description |
+|-----------|----------|--------|-------------|
+| `departure` | Yes | City code | Departure city 3-letter code (e.g., SHA, BJS), not airport |
+| `arrival` | Yes | City code | Arrival city 3-letter code (e.g., HKG, TYO), not airport |
+| `date` | Yes | YYYY-MM-DD | Departure date |
+| `flight_type` | Yes | 0 or 1 | **1** = domestic China, **0** = international/other |
+| `token` | Yes | API token; use `TRIPGENIE_API_KEY` environment variable. |
+| `query` | Yes | User's query text. |
+| `locale` | No | Language/region; use `LANG` when available. |
+
+**China domestic flight search example:**
+```bash
+jq -n --arg token "$TRIPGENIE_API_KEY" --arg departure "BJS" --arg arrival "SHA" --arg date "2026-03-15" --arg flight_type "1" '{token: $token, departure: $departure, arrival: $arrival, date: $date, flight_type: $flight_type, query: $query}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/airline -H "Content-Type: application/json" -d @- > /tmp/tripgenie-flight.md
+cat /tmp/tripgenie-flight.md
+```
+
+**International flight search example:**
+
+```bash
+jq -n --arg token "$TRIPGENIE_API_KEY" --arg departure "FRA" --arg arrival "HKG" --arg date "2026-03-17" --arg flight_type "0" '{token: $token, departure: $departure, arrival: $arrival, date: $date, flight_type: $flight_type,query: $query}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/airline -H "Content-Type: application/json" -d @- > /tmp/tripgenie-flight.md
+cat /tmp/tripgenie-flight.md
+```
+
 
 ## Trigger Rules
 
@@ -103,8 +129,6 @@ cat /tmp/tripgenie-result.md
 
 - `"Search flights from Beijing to Shanghai tomorrow"`
 - `"International flights to New York"`
-- `"Cheap domestic flights"`
-- `"Book business class tickets"`
 
 ### General Travel
 

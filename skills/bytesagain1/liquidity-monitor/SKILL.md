@@ -2,6 +2,7 @@
 name: Liquidity Monitor
 version: 1.0.0
 description: Monitor DEX liquidity pool depth, track liquidity changes, calculate LP yield, and estimate impermanent loss.
+runtime: python3
 ---
 
 # Liquidity Monitor 💧

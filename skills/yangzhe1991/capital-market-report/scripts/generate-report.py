@@ -139,7 +139,8 @@ def get_stock_data() -> Dict[str, Dict]:
                     key = parts[0]
                 price = parts[2]
                 change = parts[3]
-                pct = parts[4]
+                # Fix: percentage includes both emoji and number
+                pct = parts[4] + " " + parts[5] if len(parts) >= 6 else parts[4]
                 data[key] = {
                     "price": price,
                     "change": change,

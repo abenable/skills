@@ -1,0 +1,11 @@
+{
+  "owner": "npm-ued",
+  "slug": "toutiao",
+  "displayName": "头条新闻",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1773222121823,
+    "commit": null
+  },
+  "history": []
+}

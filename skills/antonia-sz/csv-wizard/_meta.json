@@ -3,9 +3,15 @@
   "slug": "csv-wizard",
   "displayName": "CSV Wizard",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773192146957,
-    "commit": "https://github.com/openclaw/skills/commit/805d6a34baf45760b87af9b15a1956ec09cc460a"
+    "version": "1.0.1",
+    "publishedAt": 1773192157125,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773192146957,
+      "commit": "https://github.com/openclaw/skills/commit/805d6a34baf45760b87af9b15a1956ec09cc460a"
+    }
+  ]
 }

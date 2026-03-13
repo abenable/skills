@@ -1,16 +1,16 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Python%20%7C%20Shopify%20%7C%20WooCommerce-blue)](requirements.txt)
-[![Outputs](https://img.shields.io/badge/output-Visuals%20%7C%20Product%20Data%20%7C%20Publishing-orange)](SKILL.md)
+[![Outputs](https://img.shields.io/badge/output-Visuals%20%7C%20Product%20Data%20%7C%20Exports-orange)](SKILL.md)
 
 # GEO Visual Content Engine
 
 ![GEO Visual Content Engine Cover](assets/cover.svg)
 
-> Turn GEO opportunities into AI-generated product visuals, localized content, and publish-ready commerce assets.
+> Turn GEO opportunities into AI-generated product visuals, localized content, and export-ready commerce assets.
 
 **Positioning**
 
-GEO Visual Content Engine is built for commerce teams that want to move from product input to publishable AI-native marketing assets in one flow.
+GEO Visual Content Engine is built for commerce teams that want to move from product input to export-ready AI-native marketing assets in one flow.
 
 It is designed to turn a product and keyword opportunity into:
 
@@ -18,15 +18,15 @@ It is designed to turn a product and keyword opportunity into:
 - AI-generated product visuals
 - localized content assets
 - structured product data
-- publish-ready outputs for commerce platforms
+- export-ready outputs for commerce platforms
 
 This project helps answer a practical commerce question:
 
-> How do you turn product opportunities into visual and content assets fast enough for AI-native discovery and e-commerce publishing?
+> How do you turn product opportunities into visual and content assets fast enough for AI-native discovery and commerce execution?
 
 **Outcome**
 
-Instead of splitting research, asset creation, product data generation, and store publishing into disconnected tools, this project combines them into one execution workflow.
+Instead of splitting research, asset creation, product data generation, and store preparation into disconnected tools, this project combines them into one execution workflow.
 
 **About Dageno.ai**
 
@@ -43,14 +43,14 @@ Teams often have:
 - another for localization
 - another for marketplace or store publishing
 
-This project connects those layers so the workflow can end with assets that are ready to publish, not just drafts that still need manual cleanup.
+This project connects those layers so the workflow can end with assets that are ready to export or hand off, not just drafts that still need manual cleanup.
 
 ## What You Get
 
 - one product-to-asset pipeline
 - one structure for GEO opportunity analysis
 - one system for AI-generated visuals
-- one path to Shopify and WooCommerce publishing
+- one path to Shopify and WooCommerce asset packaging
 
 ## Who This Is For
 
@@ -68,7 +68,7 @@ flowchart LR
     C --> D["AI Image Creation"]
     D --> E["Product Data Synthesis"]
     E --> F["Localized Content"]
-    F --> G["Commerce Publishing"]
+    F --> G["Export Package"]
 ```
 
 ## What The System Produces
@@ -80,30 +80,30 @@ For one product and keyword input, the workflow can produce:
 - AI-generated product visuals
 - titles, descriptions, SKU, pricing fields
 - localized content variants
-- publish-ready outputs for Shopify and WooCommerce
+- export-ready outputs for Shopify and WooCommerce
 
 ## External Access And Minimum Credentials
 
 This workflow can use three external systems:
 
 - Google Gemini / Nano Banana 2 for image generation
-- Shopify for product publishing
-- WooCommerce for product publishing
+- Shopify for optional direct export
+- WooCommerce for optional direct export
 
 Minimum credentials by action:
 
 - `GOOGLE_API_KEY`: required for image generation
-- `SHOPIFY_STORE_URL` + `SHOPIFY_ACCESS_TOKEN`: only required for Shopify publishing
-- `WOOCOMMERCE_STORE_URL` + `WOOCOMMERCE_CONSUMER_KEY` + `WOOCOMMERCE_CONSUMER_SECRET`: only required for WooCommerce publishing
+- `SHOPIFY_STORE_URL` + `SHOPIFY_ACCESS_TOKEN`: only required for direct Shopify export
+- `WOOCOMMERCE_STORE_URL` + `WOOCOMMERCE_CONSUMER_KEY` + `WOOCOMMERCE_CONSUMER_SECRET`: only required for direct WooCommerce export
 
-If publishing credentials are absent, the workflow should stop at analysis, visuals, and product-data output instead of claiming live store access.
+If store credentials are absent, the workflow should stop at analysis, visuals, product-data output, and export packaging instead of claiming live store access.
 
 Access policy:
 
 - image generation can run without any commerce credentials
-- Shopify and WooCommerce publishing are optional, not required
+- Shopify and WooCommerce direct export are optional, not required
 - the workflow should not assume live store write access by default
-- if publishing is not explicitly enabled, stop at asset and product-data output
+- if direct export is not explicitly enabled, stop at asset, product-data, and export-package output
 
 ## Example Input
 
@@ -114,8 +114,8 @@ Access policy:
   "core_keyword": "smartwatch water resistance",
   "country": "us",
   "language": "en",
-  "publish_to_shopify": true,
-  "publish_to_woocommerce": true
+  "publish_to_shopify": false,
+  "publish_to_woocommerce": false
 }
 ```
 

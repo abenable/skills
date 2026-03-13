@@ -1,9 +1,9 @@
 {
   "name": "ecommerce-automator",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "display_name": "电商 Automator (E-commerce Automator)",
   "display_name_en": "E-commerce Automator",
-  "description": "AI-powered commerce workflow that generates product images using Nano Banana 2 and can optionally publish products to Shopify and WooCommerce/WordPress when publishing is explicitly enabled.",
+  "description": "AI-powered commerce workflow that generates product images using Nano Banana 2 and prepares export-ready assets for Shopify and WooCommerce/WordPress, with direct export only when explicitly enabled.",
   "author": {
     "name": "Tim",
     "email": "sales@dageno.ai",
@@ -61,25 +61,17 @@
         "hero"
       ]
     },
-    "shopify": {
+    "shopify_export": {
       "api_env_vars": [
         "SHOPIFY_STORE_URL",
         "SHOPIFY_ACCESS_TOKEN"
-      ],
-      "endpoints": [
-        "products.json",
-        "products/{id}/images.json",
-        "variants/{variant_id}.json"
       ]
     },
-    "woocommerce": {
+    "woocommerce_export": {
       "api_env_vars": [
         "WOOCOMMERCE_STORE_URL",
         "WOOCOMMERCE_CONSUMER_KEY",
         "WOOCOMMERCE_CONSUMER_SECRET"
-      ],
-      "endpoints": [
-        "wc/v3/products"
       ]
     }
   },
@@ -90,7 +82,7 @@
     "skill_type": "ecommerce-automation",
     "output_format": "application/json",
     "network_access": "required for image generation and optional for commerce publishing",
-    "minimum_permissions": "image generation requires GOOGLE_API_KEY; commerce publishing requires only the platform credentials for the enabled target when publishing is explicitly enabled",
-    "data_access_policy": "Analysis and asset generation can run without store credentials. Live store publishing is opt-in only and should not be assumed by default."
+    "minimum_permissions": "image generation requires GOOGLE_API_KEY; direct platform export requires only the credentials for the enabled target",
+    "data_access_policy": "Analysis, asset generation, and export packaging can run without store credentials. Direct platform export is opt-in only and should not be assumed by default."
   }
 }

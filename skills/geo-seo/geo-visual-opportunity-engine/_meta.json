@@ -3,11 +3,16 @@
   "slug": "geo-visual-opportunity-engine",
   "displayName": "GEO Visual Content Engine",
   "latest": {
-    "version": "3.0.4",
-    "publishedAt": 1773126838924,
-    "commit": "https://github.com/openclaw/skills/commit/17cc49996c53468901d5d2d93b2097e5d543c8ce"
+    "version": "3.0.5",
+    "publishedAt": 1773226935829,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.0.4",
+      "publishedAt": 1773126838924,
+      "commit": "https://github.com/openclaw/skills/commit/17cc49996c53468901d5d2d93b2097e5d543c8ce"
+    },
     {
       "version": "1.0.6",
       "publishedAt": 1772765680293,

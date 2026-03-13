@@ -1,9 +1,9 @@
 ---
 name: geo-visual-opportunity-engine
-description: Use when the user wants to turn a product and keyword opportunity into AI-generated visuals, structured product data, localized commerce copy, or publish-ready outputs for Shopify and WooCommerce. Trigger for product image generation, product listing automation, GEO-aware commerce content, Shopify publishing, WooCommerce publishing, or AI-native visual content workflows.
+description: Use when the user wants to turn a product and keyword opportunity into AI-generated visuals, structured product data, localized commerce copy, or export-ready commerce assets. Trigger for product image generation, product listing preparation, GEO-aware commerce content, and AI-native visual content workflows.
 metadata:
   author: GEO-SEO
-  version: "3.0.4"
+  version: "3.0.5"
   homepage: https://github.com/GEO-SEO/geo-visual-opportunity-engine
   primaryEnv: GOOGLE_API_KEY
   requires:
@@ -20,18 +20,18 @@ metadata:
 
 # GEO Visual Opportunity Engine
 
-Use this skill to turn a product and keyword opportunity into AI-generated visuals, structured product data, localized commerce copy, and optional Shopify or WooCommerce publishing.
+Use this skill to turn a product and keyword opportunity into AI-generated visuals, structured product data, localized commerce copy, and export-ready commerce assets.
 
 ## Overview
 
-This skill connects GEO opportunity analysis, image generation, product-data synthesis, localization, and commerce publishing in one workflow.
+This skill connects GEO opportunity analysis, image generation, product-data synthesis, localization, and commerce asset preparation in one workflow.
 
 ## Best For
 
 - DTC and Shopify teams producing AI-generated product assets at scale
 - commerce operators testing product narratives for search and AI-native discovery
 - agencies managing cross-market visual content and listing workflows
-- teams that want product analysis, visuals, and publishing in one system
+- teams that want product analysis, visuals, and export-ready assets in one workflow
 
 ## Start With
 
@@ -44,41 +44,41 @@ Run GEO analysis for this product and keyword before generating assets
 ```
 
 ```text
-Create publish-ready Shopify or WooCommerce assets for this product
+Create export-ready Shopify or WooCommerce assets for this product
 ```
 
 ## Core Workflow
 
-GEO Visual Opportunity Engine is an AI-powered commerce workflow that can generate product images using Nano Banana 2 (Google Gemini) and can optionally publish products to Shopify or WooCommerce when publishing is explicitly enabled.
+GEO Visual Opportunity Engine is an AI-powered commerce workflow that can generate product images using Nano Banana 2 (Google Gemini) and prepare platform-ready assets for Shopify or WooCommerce.
 
 ## External Access And Minimum Credentials
 
 This workflow uses external services. Required credentials depend on the actions you enable:
 
 - `GOOGLE_API_KEY`: required for Nano Banana 2 / Gemini image generation
-- `SHOPIFY_STORE_URL` and `SHOPIFY_ACCESS_TOKEN`: required only when publishing to Shopify
-- `WOOCOMMERCE_STORE_URL`, `WOOCOMMERCE_CONSUMER_KEY`, and `WOOCOMMERCE_CONSUMER_SECRET`: required only when publishing to WooCommerce
+- `SHOPIFY_STORE_URL` and `SHOPIFY_ACCESS_TOKEN`: optional only when exporting directly to Shopify
+- `WOOCOMMERCE_STORE_URL`, `WOOCOMMERCE_CONSUMER_KEY`, and `WOOCOMMERCE_CONSUMER_SECRET`: optional only when exporting directly to WooCommerce
 - `python3`: required to run the packaged automation code
 
-If publishing credentials are absent:
+If store credentials are absent:
 
-- the skill can still stop at opportunity analysis, product data synthesis, and image generation
-- do not claim live publishing or platform write access unless the matching credentials are present
+- the skill can stop at opportunity analysis, product data synthesis, image generation, and export packaging
+- do not claim live publishing or platform write access unless the matching credentials are present and the user explicitly requests direct export
 
 ## Access Policy
 
-Safe default: this skill should stop at analysis, asset generation, and product-data output unless store publishing is explicitly enabled.
+Safe default: this skill should stop at analysis, asset generation, product-data output, and export packaging unless direct platform export is explicitly enabled.
 
 - image generation can run independently of commerce publishing
-- Shopify publishing is optional and must be explicitly enabled
-- WooCommerce publishing is optional and must be explicitly enabled
-- do not claim store write access or completed publication unless the matching credentials are present and the publish flags are turned on
+- direct Shopify export is optional and must be explicitly enabled
+- direct WooCommerce export is optional and must be explicitly enabled
+- do not claim store write access or completed publication unless the matching credentials are present and direct export is turned on
 
 ## Features
 
 - **Product Data Synthesis**: Auto-generate product titles, descriptions, SKU, prices, inventory
 - **AI Image Generation**: Automatically calls Nano Banana 2 to generate product images
-- **Multi-Platform Support**: Publish to Shopify and WooCommerce simultaneously
+- **Multi-Platform Support**: Prepare assets for Shopify and WooCommerce
 - **Three Image Styles**: White info, lifestyle, and hero images for each product
 - **GEO Opportunity Analysis**: Identifies high-priority visual content opportunities
 
@@ -132,7 +132,7 @@ result = automator.run_geo_analysis(
 print(f"Found {len(result['opportunities'])} opportunities")
 ```
 
-### Create Product with Publishing
+### Create Product Package
 
 ```python
 from src.main import EcommerceAutomator
@@ -143,14 +143,14 @@ automator = EcommerceAutomator(
     shopify_access_token="your-access-token"
 )
 
-# Create a product package and optionally publish it
+# Create a product package and optionally export it
 result = automator.create_product(
     product_name="Wireless Bluetooth Headphones Pro",
     category="Electronics",
     base_price=79.99,
     generate_images=True,
     image_style="white_info",
-    publish_to_shopify=True,
+    publish_to_shopify=False,
     publish_to_woocommerce=False
 )
 ```
@@ -171,7 +171,7 @@ Initialize the automator with API credentials.
 1. Analyze GEO opportunities
 2. Synthesize product data (title, description, SKU, price)
 3. Generate AI images
-4. Publish to e-commerce platforms
+4. Export platform-ready assets or use direct export when explicitly enabled
 
 #### `run_geo_analysis(brand, product, core_keyword, country, language, competitors, platform_focus, generate_images)`
 

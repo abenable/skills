@@ -3,11 +3,16 @@
   "slug": "civil-service",
   "displayName": "Civil Service",
   "latest": {
-    "version": "2.0.0",
-    "publishedAt": 1773346229263,
-    "commit": "https://github.com/openclaw/skills/commit/54d5b66926ddad16ed337ff28718562263eeda0b"
+    "version": "2.2.0",
+    "publishedAt": 1773421022695,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.0",
+      "publishedAt": 1773346229263,
+      "commit": "https://github.com/openclaw/skills/commit/54d5b66926ddad16ed337ff28718562263eeda0b"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773170234144,

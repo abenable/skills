@@ -1,6 +1,21 @@
 ---
 name: dataworks-open-api
 description: Operate Alibaba Cloud DataWorks through dynamic API discovery and official SDKs (Node.js, Python, Java). Covers data development, workflow operations, data integration, data quality, metadata lineage, workspace management, and more. APIs are discovered at runtime from official docs and OpenAPI metadata — no hardcoded list.
+source: https://github.com/aliyun/alibabacloud-bigdata-skills
+homepage: https://github.com/aliyun/alibabacloud-bigdata-skills/tree/main/skills/dataworks/open-api
+env:
+  - name: ALIBABA_CLOUD_ACCESS_KEY_ID
+    description: Alibaba Cloud Access Key ID (required unless using credentials URI or shared config)
+    required: false
+  - name: ALIBABA_CLOUD_ACCESS_KEY_SECRET
+    description: Alibaba Cloud Access Key Secret (required unless using credentials URI or shared config)
+    required: false
+  - name: ALIBABA_CLOUD_REGION_ID
+    description: Target region (e.g. cn-shanghai, cn-beijing). Optional; skill will prompt if unset.
+    required: false
+  - name: ALIBABA_CLOUD_CREDENTIALS_URI
+    description: HTTP endpoint for dynamic AK/SK/STS token (alternative to explicit AK/SK)
+    required: false
 ---
 
 # DataWorks (dataworks-public)
@@ -27,13 +42,15 @@ If execution fails at any step, escalate to the next level:
 
 4. **GitHub source code** — read the Java SDK source for model/request class definitions: `https://github.com/aliyun/alibabacloud-java-sdk/tree/master/dataworks-public-20240518` (browse `src/main/java/com/aliyun/dataworks_public20240518/` for request/response models).
 5. **MCP Server** — use the MCP Server to call APIs directly (see `references/mcp_server.md`).
-6. **Browser** — use browser-use to visit the DataWorks Homepage (`https://dataworks.data.aliyun.com/${ALICLOUD_REGION_ID}/#/index`) and inspect the UI behavior, network requests, or page content for clues.
+6. **Browser** — use browser-use to visit the DataWorks Homepage (`https://dataworks.data.aliyun.com/${ALIBABA_CLOUD_REGION_ID}/#/index`) and inspect the UI behavior, network requests, or page content for clues.
 
-## AccessKey priority (must follow)
+## Credentials priority (must follow)
 
-1. Environment variables: `ALICLOUD_ACCESS_KEY_ID` / `ALICLOUD_ACCESS_KEY_SECRET` / `ALICLOUD_REGION_ID`
-   Region policy: `ALICLOUD_REGION_ID` is an optional default. If unset, decide the most reasonable region for the task; if unclear, ask the user.
-2. Shared config file: `~/.alibabacloud/credentials`
+1. Environment variables: `ALIBABA_CLOUD_ACCESS_KEY_ID` / `ALIBABA_CLOUD_ACCESS_KEY_SECRET` / `ALIBABA_CLOUD_REGION_ID`
+2. Credentials URI: `ALIBABA_CLOUD_CREDENTIALS_URI` (e.g. `http://localhost:7002/api/v1/credentials/0`). The SDK credentials provider automatically fetches and refreshes AK/SK/STS tokens from this HTTP endpoint.
+3. Shared config file: `~/.alibabacloud/credentials`
+
+Region policy: `ALIBABA_CLOUD_REGION_ID` is an optional default. If unset, decide the most reasonable region for the task; if unclear, ask the user.
 
 ## API discovery
 
@@ -99,10 +116,10 @@ import Util from "@alicloud/tea-util";
 
 // 1. Create client
 const config = new OpenApi.Config({
-  accessKeyId: process.env.ALICLOUD_ACCESS_KEY_ID,
-  accessKeySecret: process.env.ALICLOUD_ACCESS_KEY_SECRET,
+  accessKeyId: process.env.ALIBABA_CLOUD_ACCESS_KEY_ID,
+  accessKeySecret: process.env.ALIBABA_CLOUD_ACCESS_KEY_SECRET,
   endpoint: `dataworks.${
-    process.env.ALICLOUD_REGION_ID || "cn-shanghai"
+    process.env.ALIBABA_CLOUD_REGION_ID || "cn-shanghai"
   }.aliyuncs.com`,
 });
 const client = new OpenApi.default(config);
@@ -149,8 +166,8 @@ import * as DataWorksClasses from "@alicloud/dataworks-public20240518";
 import OpenApi from "@alicloud/openapi-client";
 
 const config = new OpenApi.Config({
-  accessKeyId: process.env.ALICLOUD_ACCESS_KEY_ID,
-  accessKeySecret: process.env.ALICLOUD_ACCESS_KEY_SECRET,
+  accessKeyId: process.env.ALIBABA_CLOUD_ACCESS_KEY_ID,
+  accessKeySecret: process.env.ALIBABA_CLOUD_ACCESS_KEY_SECRET,
   endpoint: `dataworks.cn-shanghai.aliyuncs.com`,
 });
 const client = new DataWorks.default(config);
@@ -179,9 +196,9 @@ from alibabacloud_dataworks_public20240518 import models
 from alibabacloud_tea_openapi.models import Config
 
 config = Config(
-    access_key_id=os.environ['ALICLOUD_ACCESS_KEY_ID'],
-    access_key_secret=os.environ['ALICLOUD_ACCESS_KEY_SECRET'],
-    endpoint=f"dataworks.{os.environ.get('ALICLOUD_REGION_ID', 'cn-shanghai')}.aliyuncs.com",
+    access_key_id=os.environ['ALIBABA_CLOUD_ACCESS_KEY_ID'],
+    access_key_secret=os.environ['ALIBABA_CLOUD_ACCESS_KEY_SECRET'],
+    endpoint=f"dataworks.{os.environ.get('ALIBABA_CLOUD_REGION_ID', 'cn-shanghai')}.aliyuncs.com",
 )
 client = Client(config)
 request = models.ListProjectsRequest(page_number=1, page_size=10)
@@ -205,9 +222,9 @@ import com.aliyun.dataworks_public20240518.models.*;
 import com.aliyun.teaopenapi.models.Config;
 
 Config config = new Config()
-    .setAccessKeyId(System.getenv("ALICLOUD_ACCESS_KEY_ID"))
-    .setAccessKeySecret(System.getenv("ALICLOUD_ACCESS_KEY_SECRET"))
-    .setEndpoint("dataworks." + System.getenv("ALICLOUD_REGION_ID") + ".aliyuncs.com");
+    .setAccessKeyId(System.getenv("ALIBABA_CLOUD_ACCESS_KEY_ID"))
+    .setAccessKeySecret(System.getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET"))
+    .setEndpoint("dataworks." + System.getenv("ALIBABA_CLOUD_REGION_ID") + ".aliyuncs.com");
 Client client = new Client(config);
 
 ListProjectsRequest request = new ListProjectsRequest()

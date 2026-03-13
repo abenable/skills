@@ -11,6 +11,11 @@ description: |
   **Trigger Keywords**: analyze data, statistics, calculate, interpret trends, generate chart, visualize, plot
   
   **Prerequisites**: Set environment variable CHARTGEN_API_KEY (obtain from chartgen.ai)
+metadata:
+  openclaw:
+    requires:
+      env:
+        - CHARTGEN_API_KEY
 ---
 
 # ChartGen Data Analysis
@@ -23,7 +28,7 @@ This skill enables codeless data analysis through natural language interaction. 
 
 The skill will intelligently parse time, metrics, and analytical dimensions through conversational queries, then generate SQL queries for data, create interactive BI charts, structured analysis reports. Optimized for standardized vertical datasets, powered by enterprise-grade analytics engine for reliable results.
 
-This skill is supported by [ChartGen AI](https://chartgen.ai)
+**API Service**: This skill uses the ChartGen API service hosted at [chartgen.ai](https://chartgen.ai). All data is sent to `https://chartgen.ai/api/platform_api/` for processing.
 
 ---
 
@@ -31,15 +36,13 @@ This skill is supported by [ChartGen AI](https://chartgen.ai)
 
 ### 1. Apply for an API Key
 
-You can easily create and manage your API Key in [ChartGen AI](https://chartgen.ai) - API. To begin with, you need to register for a ChartGen AI account.
+You can easily create and manage your API Key at [chartgen.ai](https://chartgen.ai). To begin with, you need to register for an account.
 
 **Steps:**
-1. Visit [ChartGen AI](https://chartgen.ai) and sign up for an account
-2. Click the bottom left corner to access the API management dashboard
+1. Visit [chartgen.ai](https://chartgen.ai) and sign up for an account
+2. Access the API management dashboard
 3. Create a new API and set the credit consumption limit
 4. Copy the API Key for use
-
-A single account can create up to 10 APIs.
 
 ### 2. Configure Environment Variable
 
@@ -65,8 +68,8 @@ python scripts/data_visualization.py --query "Draw a bar chart of sales by regio
 ## Credit Rules
 
 - Calling a single tool consumes 20 credits
-- You get 200 free credits per month for ChartGen AI Free account, with each batch of credits valid for three months
-- When credits run out, you can purchase more or upgrade your account on the [ChartGen AI Billing page](https://chartgen.ai/billing)
+- You get 200 free credits per month for free accounts
+- When credits run out, you can purchase more or upgrade your account on the [chartgen.ai Billing page](https://chartgen.ai/billing)
 
 ---
 
@@ -198,17 +201,23 @@ Common errors and solutions:
 
 ---
 
-## Contact
-
-For inquiries or feedback, join our [Discord](https://discord.com/invite/Bwd6zGYThS).
-
----
-
 ## Technical Details
 
-- **API Base URL**: `https://ada.im/api/platform_api/`
+- **API Base URL**: `https://chartgen.ai/api/platform_api/`
 - **Authentication**: Header `Authorization: <api-key>`
 - **Request Format**: JSON
 - **Timeout**: 60 seconds
+- **Required Environment Variable**: `CHARTGEN_API_KEY`
 
 See `scripts/chartgen_api.py` for implementation details.
+
+---
+
+## Privacy Notice
+
+**Data sent to remote API**: This skill reads your provided data files (CSV/XLSX/JSON), base64-encodes them, and sends them to the ChartGen API at `https://chartgen.ai/api/platform_api/` for analysis and chart generation. Your data will leave your machine.
+
+**Recommendations**:
+- Do not upload sensitive or regulated data
+- Use a dedicated API key with limited scope/credits
+- Review the privacy practices at [chartgen.ai](https://chartgen.ai) before use

@@ -14,7 +14,7 @@ from typing import Optional, Dict, Any
 class ChartGenAPI:
     """ChartGen API Client"""
     
-    BASE_URL = "https://ada.im/api/platform_api/"
+    BASE_URL = "https://chartgen.ai/api/platform_api/"
     
     def __init__(self, api_key: Optional[str] = None):
         """

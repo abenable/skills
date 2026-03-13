@@ -1,11 +1,17 @@
 {
   "owner": "alirezarezvani",
   "slug": "database-schema-designer",
-  "displayName": "Database Schema Designer",
+  "displayName": "database-schema-designer",
   "latest": {
-    "version": "2.1.1",
-    "publishedAt": 1773134676361,
-    "commit": "https://github.com/openclaw/skills/commit/705d6cf4a983759617341c93feaa2bf2b43097f6"
+    "version": "1.0.0",
+    "publishedAt": 1773242259611,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.1.1",
+      "publishedAt": 1773134676361,
+      "commit": "https://github.com/openclaw/skills/commit/705d6cf4a983759617341c93feaa2bf2b43097f6"
+    }
+  ]
 }

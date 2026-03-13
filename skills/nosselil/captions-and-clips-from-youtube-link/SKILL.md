@@ -1,6 +1,6 @@
 ---
-name: captions-and-clips-from-Youtube-Link
-description: Turn YouTube videos into viral short-form clips with captions (TikTok, Reels, Shorts) using the MakeAIClips API at https://makeaiclips.live. Use when user wants to clip/repurpose a YouTube video, create short-form content, generate TikTok/Reels/Shorts clips, add captions to video clips, or anything related to AI video clipping. Free tier gives 5 clips/month with no credit card. Requires env var MAKEAICLIPS_API_KEY — get one free at https://makeaiclips.live/sign-up. Note: YouTube URLs are sent to makeaiclips.live for processing.
+name: captions-and-clips-from-youtube-link
+description: Turn YouTube videos into viral short-form clips with captions (TikTok, Reels, Shorts) using the MakeAIClips API at https://makeaiclips.live. Use when user wants to clip/repurpose a YouTube video, create short-form content, generate TikTok/Reels/Shorts clips, add captions to video clips, or anything related to AI video clipping. Free tier gives 10 clips/month with no credit card. Requires env var MAKEAICLIPS_API_KEY — get one free at https://makeaiclips.live/sign-up. Note: YouTube URLs are sent to makeaiclips.live for processing.
 metadata:
   openclaw:
     requires:
@@ -13,10 +13,10 @@ metadata:
 
 # MakeAIClips — AI Video Clipper
 
-Paste a YouTube link → get up to 10 vertical clips with word-by-word captions and hook titles in ~90 seconds.
+Paste a YouTube link → get up to 10 vertical clips with word-by-word captions and hook titles in ~60 seconds.
 
 **Website:** https://makeaiclips.live
-**API Base:** `https://makeaiclips.live/api/v1`
+**API Base:** `https://makeaiclips.live`
 
 ## Setup
 
@@ -36,19 +36,19 @@ export MAKEAICLIPS_API_KEY="mak_live_..."
 ```
 ⚡ MakeAIClips — AI Video Clipper
 
-Paste a YouTube link → get vertical clips with captions & hook titles in 90 seconds.
+Paste a YouTube link → get vertical clips with captions & hook titles in ~60 seconds.
 
 What you get:
 • AI picks the best moments from your video
-• 9:16 vertical crop with face tracking
-• Word-by-word burned-in captions (5 styles)
+• 1080x1920 vertical crop (9:16)
+• Word-by-word burned-in captions (8+ styles)
 • 3 hook title variations per clip (5 title styles)
 • Ready for TikTok, Instagram Reels, YouTube Shorts
 
 Plans:
-🆓 Free — 5 clips/month (no credit card needed)
+🆓 Free — 10 clips/month (no credit card needed)
 ⚡ Pro — $20/mo — 100 clips
-🎬 Studio — $50/mo — 300 clips + 3 premium caption styles
+🎬 Studio — $50/mo — 300 clips + 2 premium caption styles
 📅 Yearly — $500/yr — 5,000 clips + all features
 
 🔗 https://makeaiclips.live
@@ -56,102 +56,178 @@ Plans:
 
 ## API Endpoints
 
-All authenticated requests: `Authorization: Bearer <MAKEAICLIPS_API_KEY>`
+All authenticated requests require header: `Authorization: Bearer <MAKEAICLIPS_API_KEY>`
 
-### Check Usage
-`GET /api/v1/usage`
-Returns: `{"plan":"free","clips_used":2,"clips_limit":5,"clips_remaining":3,"resets_at":"..."}`
+### Generate Clips (YouTube link)
 
-Always check usage before generating clips.
-
-### Generate Clips
 `POST /api/v1/clips`
-Body: `{"youtube_url":"...","num_clips":3}`
-Returns: `{"job_id":"...","status":"processing","clips_remaining":2}`
 
-Optional body params:
-- `num_clips` — 1 to 10 (default 3)
-- `caption_style` — see Caption Styles below
-- `title_style` — see Title Styles below
-- `title_duration` — `"5"`, `"10"`, `"30"`, `"half"`, `"full"`
-- `clip_duration` — `"short"` (15-60s), `"medium"` (30-90s), `"long"` (60-120s)
+```json
+{
+  "youtube_url": "https://www.youtube.com/watch?v=...",
+  "num_clips": 3,
+  "caption_style": "karaoke-yellow",
+  "title_style": "bold-center",
+  "title_duration": "5",
+  "clip_duration": "medium",
+  "quality": "high"
+}
+```
+
+Returns: `{"job_id": "...", "status": "pending"}`
+
+**Parameters:**
+
+| Param | Type | Default | Options |
+|-------|------|---------|---------|
+| `youtube_url` | string | required | Any YouTube URL |
+| `num_clips` | int | 3 | 1–10 |
+| `caption_style` | string | `"karaoke-yellow"` | See Caption Styles |
+| `title_style` | string | `"bold-center"` | See Title Styles |
+| `title_duration` | string | `"5"` | `"5"`, `"10"`, `"30"`, `"half"`, `"full"` |
+| `clip_duration` | string | `"medium"` | `"short"` (15-30s), `"medium"` (30-60s), `"long"` (60-120s) |
+| `quality` | string | `"high"` | `"high"` (CRF 18), `"medium"` (CRF 23), `"low"` (CRF 28) |
+
+### Generate Clips (File upload)
+
+`POST /api/v1/clips/upload` (multipart form)
+
+Fields: `file` (video file), `caption_style`, `title_style`, `title_duration`, `clip_duration`, `num_clips`, `quality`
 
 ### Poll Job Status
-`GET /api/v1/clips/:jobId`
-Poll every 5s until `status` is `complete` or `failed`.
 
-Complete response includes `clips` array with:
-- `clip_index`, `hook_title`, `hook_variations` (3 options), `duration_seconds`, `transcript_segment`
-- `download_url` — relative path to download the MP4
+`GET /api/v1/clips/{job_id}`
+
+Poll every 5 seconds until `status` is `complete` or `failed`.
+
+Progress values: `Downloading video...` → `Transcribing audio...` → `Selecting best clips with AI...` → `Rendering clip 1/N...` → `Done!`
+
+Complete response includes `clips` array:
+```json
+{
+  "job_id": "...",
+  "status": "complete",
+  "progress": "Done!",
+  "clips": [
+    {
+      "clip_index": 1,
+      "duration_seconds": 35.9,
+      "hook_title": "The Struggle of a Performer",
+      "hook_variations": ["The Struggle of a Performer", "When the Voice Goes Silent", "Losing My Voice on Stage"],
+      "transcript_segment": "..."
+    }
+  ]
+}
+```
 
 ### Download Clip
-`GET /api/v1/clips/:jobId/download/:clipIndex`
+
+`GET /api/v1/clips/{job_id}/download/{clip_index}`
+
 Returns MP4 file. Save with `-o clip_N.mp4`.
+
+### Re-render with Different Hook
+
+`POST /api/v1/clips/{job_id}/rerender/{clip_index}`
+
+Body: `{"hook_title": "New Title Here"}`
+
+### Health Check
+
+`GET /api/health` — Returns `{"status": "ok"}`
 
 ## Workflow
 
-1. Check usage → `GET /api/v1/usage` → show clips remaining
-2. Submit → `POST /api/v1/clips` with youtube_url
-3. Poll → `GET /api/v1/clips/:jobId` every 5s, show progress updates to user
-4. Present results with hook titles, durations, transcript previews
-5. Ask which clips to download (all or specific)
-6. Download selected clips to workspace
-
-## Handling Limits (429 response)
-
-```
-📊 You've used {used}/{limit} clips this month.
-
-Upgrade your plan:
-⚡ Pro ($20/mo) → 100 clips
-🎬 Studio ($50/mo) → 300 clips  
-📅 Yearly ($500/yr) → 5,000 clips
-
-Manage subscription: https://makeaiclips.live/dashboard/subscription
-Limit resets: {resets_at}
-```
+1. Submit job → `POST /api/v1/clips` with `youtube_url` and preferences
+2. Poll → `GET /api/v1/clips/{job_id}` every 5s, show progress to user
+3. Present results with hook titles, durations, transcript previews
+4. Ask which clips to download (all or specific)
+5. Download → `GET /api/v1/clips/{job_id}/download/{clip_index}` and save to workspace
 
 ## Caption Styles
 
-| Key | Name | Notes |
-|-----|------|-------|
-| `yellow-highlight` | Yellow Highlight | Default. Karaoke with yellow word pop |
-| `white-shadow` | Clean White | White text, drop shadow |
-| `boxed` | Boxed Subtitle | Dark rounded box behind text |
-| `neon-glow` | Neon Pop | Glowing cyan/pink/green cycling |
-| `gradient-bold` | Bold Outline | White uppercase, colored outline |
-| `emoji-yellow` | Emoji Pop | Golden karaoke + emoji accents (Studio+) |
-| `typewriter` | Typewriter | Green monospace reveal (Studio+) |
-| `cinematic` | Cinematic | Letterbox bars, serif caps (Studio+) |
+### Free & Pro Styles
 
-When user asks about styles, mention that Studio+ unlocks 3 premium styles.
+| Key | Name | Look |
+|-----|------|------|
+| `karaoke-yellow` | Karaoke | White text, active word turns yellow (default) |
+| `white-shadow` | Clean White | White text with drop shadow |
+| `boxed` | Boxed | Text in dark rounded boxes |
+| `gradient-bold` | Bold Outline | Orange/white color alternating |
+| `subtitle-documentary` | Documentary | Uppercase with fade, letterbox bars |
+| `mrbeast-bold-viral` | MrBeast | Bold viral-style captions |
+| `alex-hormozi` | Hormozi | Bold with colored outlines |
+| `neon-viral` | Neon | Glowing neon multi-color |
+| `impact-meme` | Impact Meme | Bold uppercase meme text |
+| `modern-creator` | Modern | Contemporary creator-style |
+| `gradient-viral` | Gradient | Multi-color gradient fill |
+| `bold-box-highlight` | Box Highlight | Heavy highlighted box |
+| `clean-premium` | Premium | Minimalist clean aesthetic |
+
+### Studio Exclusive Styles
+
+| Key | Name | Look |
+|-----|------|------|
+| `typewriter` | Typewriter | Character-by-character reveal |
+| `cinematic` | Cinematic | Letterbox + elegant serif font |
 
 ## Title Styles
 
 | Key | Name |
 |-----|------|
+| `none` | No title overlay |
 | `bold-center` | White bold centered (default) |
-| `top-bar` | Dark semi-transparent bar |
+| `top-bar` | Dark bar at top |
 | `pill` | Yellow pill background |
 | `outline` | White outline border |
 | `gradient-bg` | Purple background box |
+
+## Video Quality
+
+| Key | CRF | Speed | Use Case |
+|-----|-----|-------|----------|
+| `high` | 18 | Slowest | Best quality (default) |
+| `medium` | 23 | Balanced | Good quality, faster |
+| `low` | 28 | Fastest | Quick previews |
 
 ## Error Handling
 
 | Status | Meaning | Action |
 |--------|---------|--------|
-| 400 | Bad request (missing youtube_url) | Check params |
-| 401 | Invalid/missing API key | Re-check key, offer to register |
+| 400 | Missing youtube_url | Check params |
+| 401 | Invalid/missing API key | Re-check key |
 | 404 | Job not found | Check job_id |
 | 429 | Clip limit reached | Show upgrade options |
-| 502/503 | Backend unavailable | Retry in 30s, max 3 retries |
+| 500 | Server error | Retry in 30s |
+
+On 429, show:
+```
+📊 Clip limit reached. Upgrade at https://makeaiclips.live/dashboard/subscription
+```
 
 ## Tips for Agents
 
-- Always check `/api/v1/usage` before generating — don't waste the user's clips
-- Default to 3 clips unless user specifies otherwise
-- Show the hook title variations and let the user pick
-- When downloading, use descriptive filenames: `{video_title}_clip{N}.mp4`
-- If user provides multiple YouTube URLs, process them sequentially
-- Suggest caption/title styles when the user seems interested in customization
-- After successful generation, mention the dashboard for more features: https://makeaiclips.live/dashboard
+- Default to 3 clips, `quality: "high"`, `caption_style: "karaoke-yellow"` unless user specifies
+- Show hook title variations — let the user pick their favorite
+- Use descriptive filenames when downloading: `{video_title}_clip{N}.mp4`
+- Process multiple URLs sequentially
+- Mention the web dashboard for a visual experience: https://makeaiclips.live/dashboard/new
+- Total processing time is ~60 seconds per job (Deepgram transcription + GPT clip selection + FFmpeg render)
+
+## Example
+
+```bash
+# Submit job
+curl -X POST "https://makeaiclips.live/api/v1/clips" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer mak_live_YOUR_KEY" \
+  -d '{"youtube_url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","num_clips":3,"quality":"high","caption_style":"karaoke-yellow"}'
+
+# Poll status
+curl "https://makeaiclips.live/api/v1/clips/JOB_ID" \
+  -H "Authorization: Bearer mak_live_YOUR_KEY"
+
+# Download clip
+curl -o clip_1.mp4 "https://makeaiclips.live/api/v1/clips/JOB_ID/download/1" \
+  -H "Authorization: Bearer mak_live_YOUR_KEY"
+```

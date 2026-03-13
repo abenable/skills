@@ -3,9 +3,15 @@
   "slug": "captions-and-clips-from-youtube-link",
   "displayName": "Captions and Clips from YouTube Link",
   "latest": {
-    "version": "1.3.0",
-    "publishedAt": 1772907051739,
-    "commit": "https://github.com/openclaw/skills/commit/62f55ff53399121ceb69a5086e603d96aa8608e8"
+    "version": "1.3.1",
+    "publishedAt": 1773387631140,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.3.0",
+      "publishedAt": 1772907051739,
+      "commit": "https://github.com/openclaw/skills/commit/62f55ff53399121ceb69a5086e603d96aa8608e8"
+    }
+  ]
 }

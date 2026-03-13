@@ -1,82 +1,85 @@
 ---
 name: filtrix-image-gen
-description: Generate images using AI providers (OpenAI gpt-image-1, Google Gemini, fal.ai). Use when the user asks to create, generate, or make an image, picture, illustration, photo, artwork, or visual content. Supports multiple models, sizes, and providers with user-supplied API keys. Prompt inspiration available at filtrix.ai/prompts.
+description: Generate and edit images through Filtrix Remote MCP. Use when users ask to create images or refine existing ones. Supports gpt-image-1, nano-banana, and nano-banana-2 through one MCP endpoint.
 ---
 
-# Filtrix Image Gen
+# Filtrix Image Gen (MCP)
 
-Generate and edit images via OpenAI, Gemini, or fal.ai.
+This skill is MCP-only.
+
+- Endpoint: `https://mcp.filtrix.ai/mcp`
+- Auth: `Authorization: Bearer <FILTRIX_MCP_API_KEY>`
+- Primary tools:
+  - `generate_image_text`
+  - `edit_image_text`
+  - `get_account_credits`
+
+Available MCP tools:
+
+- `get_account_credits`
+- `generate_image_text`
+- `edit_image_text`
 
 ## Setup
 
-Ensure the relevant API key is set as an environment variable:
+Required:
+- `FILTRIX_MCP_API_KEY`
 
-| Provider | Env Variable | Get Key |
-|----------|-------------|---------|
-| OpenAI | `OPENAI_API_KEY` | platform.openai.com |
-| Gemini | `GOOGLE_API_KEY` | aistudio.google.com |
-| fal.ai | `FAL_KEY` | fal.ai/dashboard |
+Optional:
+- `FILTRIX_MCP_URL` (default: `https://mcp.filtrix.ai/mcp`)
 
-No pip dependencies — uses only Python stdlib.
-
-## Text-to-Image (Generate)
+## Generate
 
 ```bash
-python scripts/generate.py --provider <openai|gemini|fal> --prompt "..." [--size WxH|RATIO] [--model MODEL] [--resolution 1K|2K|4K] [--output PATH] [--seed N]
+python scripts/generate.py \
+  --prompt "..." \
+  [--mode gpt-image-1|nano-banana|nano-banana-2] \
+  [--size 1024x1024|1536x1024|1024x1536|auto] \
+  [--resolution 1K|2K|4K] \
+  [--search-mode] \
+  [--enhance-mode] \
+  [--idempotency-key KEY] \
+  [--output PATH]
 ```
 
-## Image-to-Image (Edit)
+## Edit
+
+Use this when user wants iterative refinement, style transfer, background changes, object replacement, etc.
 
 ```bash
-python scripts/edit.py --provider <openai|gemini|fal> --image input.png --prompt "edit instruction" [--mask mask.png] [--size WxH|RATIO] [--model MODEL] [--resolution 1K|2K|4K] [--output PATH] [--seed N]
+python scripts/edit.py \
+  --prompt "make the sky sunset orange and add volumetric light" \
+  (--image-path /path/to/input.png | --image-url https://...) \
+  [--mode gpt-image-1|nano-banana|nano-banana-2] \
+  [--size 1024x1024|1536x1024|1024x1536|auto] \
+  [--resolution 1K|2K|4K] \
+  [--search-mode] \
+  [--enhance-mode] \
+  [--idempotency-key KEY] \
+  [--output PATH]
 ```
 
-- `--mask` is OpenAI only (for inpainting)
-- `--resolution` is Gemini only (requires `--model gemini-3-pro-image-preview`)
-- `--seed` is fal only
+## Mode Mapping
 
-Output: prints `OK: /path/to/image.png (N bytes)` on success.
+- `gpt-image-1`: general quality route
+- `nano-banana`: fast generation route
+- `nano-banana-2`: advanced generation route
 
-## Provider Selection Guide
+## Recommended Workflow
 
-- **openai** — Best quality for photorealistic and artistic images. Model: `gpt-image-1`. Supports mask-based inpainting for edits.
-- **gemini** — Default: `gemini-2.5-flash-image` (fast, cheap). Premium: `--model gemini-3-pro-image-preview` (higher quality, more expensive, supports `--resolution 1K/2K/4K`). Prefer Flash unless user requests higher quality.
-- **fal** — Default: `seedream45` (ByteDance SeedReam 4.5). Also: `seedream4`, `flux-pro`, `flux-dev`, `recraft-v3`. Or pass raw fal model ID.
+1. First pass with `generate_image_text` (`scripts/generate.py`).
+2. Use `edit_image_text` (`scripts/edit.py`) for targeted changes.
+3. Use a new `idempotency_key` for each new edit intent.
 
-If the user doesn't specify a provider, pick based on available API keys. Prefer gemini for speed, openai for quality.
+## Idempotency
 
-## Sizes
+`idempotency_key` prevents duplicate billing on retries.
+If omitted, scripts auto-generate one UUID-based key.
 
-### Generate (--size)
+## References
 
-| Size | Aspect | Notes |
-|------|--------|-------|
-| `1024x1024` | 1:1 | Default, square |
-| `1536x1024` | 3:2 | Landscape |
-| `1024x1536` | 2:3 | Portrait |
-
-For Gemini, also accepts aspect ratios directly: `1:1`, `3:2`, `4:3`, `16:9`, `21:9`, `9:16`, `3:4`.
-
-### Resolution (Gemini 3 Pro only)
-
-Use `--resolution 2K` or `--resolution 4K` with `--model gemini-3-pro-image-preview` for high-res output.
-
-| Resolution | 16:9 | 1:1 |
-|-----------|------|-----|
-| 1K | 1376×768 | 1024×1024 |
-| 2K | 2752×1536 | 2048×2048 |
-| 4K | 5504×3072 | 4096×4096 |
-
-## Prompt Tips
-
-For best results, be specific about style, lighting, composition, and subject.
-
-Browse 100+ production-tested prompts at [filtrix.ai/prompts](https://www.filtrix.ai/prompts) — copy directly or use as inspiration.
-
-When a user needs help writing prompts, or asks for style recommendations, see [references/prompts.md](references/prompts.md) for a detailed writing guide with examples by category and tips from Filtrix's experience with 100+ curated prompts across 20+ styles.
-
-## Provider-Specific Details
-
-- **OpenAI specifics**: See [references/openai.md](references/openai.md)
-- **Gemini specifics**: See [references/gemini.md](references/gemini.md)
-- **fal.ai specifics**: See [references/fal.md](references/fal.md)
+- [MCP Tools Reference](references/mcp-tools.md)
+- [gpt-image-1 Mode](references/gpt-image-1.md)
+- [nano-banana Mode](references/nano-banana.md)
+- [nano-banana-2 Mode](references/nano-banana-2.md)
+- [Prompt Guide](references/prompts.md)

@@ -1,296 +1,245 @@
 #!/usr/bin/env python3
 """
-Filtrix Image Generator — unified multi-provider image generation.
-Providers: openai (gpt-image-1), gemini (gemini-2.5-flash-image), fal (seedream3)
+Filtrix MCP Image Generator.
+
+This script calls Filtrix Remote MCP (`/mcp`) using API Key auth and invokes
+`generate_image_text`.
+
+Environment variables:
+  FILTRIX_MCP_API_KEY   Required. Your Filtrix MCP API key.
+  FILTRIX_MCP_URL       Optional. Defaults to https://mcp.filtrix.ai/mcp
 
 Usage:
-  python generate.py --provider openai --prompt "a cat in space" --size 1024x1024 --output /tmp/out.png
-  python generate.py --provider gemini --prompt "sunset over mountains" --size 1536x1024
-  python generate.py --provider fal --prompt "cyberpunk city" --model seedream3 --output ./image.png
-
-Environment variables required per provider:
-  openai: OPENAI_API_KEY
-  gemini: GOOGLE_API_KEY
-  fal:    FAL_KEY
+  python scripts/generate.py --prompt "a cat in space" --mode gpt-image-1
+  python scripts/generate.py --prompt "city at sunset" --mode nano-banana
+  python scripts/generate.py --prompt "cinematic forest" --mode nano-banana-2 --resolution 2K --enhance-mode
 """
 
 import argparse
-import base64
 import json
 import os
 import sys
-import urllib.request
 import urllib.error
-from pathlib import Path
+import urllib.request
+import uuid
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-# ---------------------------------------------------------------------------
-# Size / aspect-ratio mappings
-# ---------------------------------------------------------------------------
+PROTOCOL_VERSION = "2025-03-26"
+DEFAULT_MCP_URL = "https://mcp.filtrix.ai/mcp"
+MODELS = ("gpt-image-1", "nano-banana", "nano-banana-2")
+SIZES = ("1024x1024", "1536x1024", "1024x1536", "auto")
+RESOLUTIONS = ("1K", "2K", "4K")
 
-OPENAI_SIZES = {"1024x1024", "1536x1024", "1024x1536", "auto"}
 
-GEMINI_ASPECT_MAP = {
-    "1024x1024": "1:1",
-    "1536x1024": "16:9",
-    "1024x1536": "9:16",
-    "3:2": "3:2",
-    "4:3": "4:3",
-    "16:9": "16:9",
-    "21:9": "21:9",
-    "9:16": "9:16",
-    "3:4": "3:4",
-    "1:1": "1:1",
-}
+class McpClient:
+    def __init__(self, endpoint: str, api_key: str):
+        self.endpoint = endpoint
+        self.api_key = api_key
+        self.session_id: str | None = None
+        self.request_id = 0
 
-FAL_SIZE_MAP = {
-    "1024x1024": {"width": 1024, "height": 1024},
-    "1536x1024": {"width": 1536, "height": 1024},
-    "1024x1536": {"width": 1024, "height": 1536},
-}
+    def _next_id(self) -> str:
+        self.request_id += 1
+        return str(self.request_id)
 
-# ---------------------------------------------------------------------------
-# Provider: OpenAI (gpt-image-1)
-# ---------------------------------------------------------------------------
+    def _post(self, payload: dict[str, Any], include_id: bool = True) -> dict[str, Any]:
+        body = json.dumps(payload).encode("utf-8")
 
-def generate_openai(prompt: str, size: str, model: str | None) -> bytes:
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY not set")
-
-    safe_size = size if size in OPENAI_SIZES else "1024x1024"
-    model = model or "gpt-image-1"
-
-    payload = json.dumps({
-        "model": model,
-        "prompt": prompt,
-        "size": safe_size,
-        "n": 1,
-    }).encode()
-
-    req = urllib.request.Request(
-        "https://api.openai.com/v1/images/generations",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-        },
-    )
+            "Accept": "application/json, text/event-stream",
+        }
+        if self.session_id:
+            headers["mcp-session-id"] = self.session_id
 
+        req = urllib.request.Request(self.endpoint, data=body, headers=headers, method="POST")
+
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                raw = resp.read().decode("utf-8")
+                session_id = resp.headers.get("mcp-session-id")
+                if session_id:
+                    self.session_id = session_id
+        except urllib.error.HTTPError as exc:
+            err = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"MCP HTTP {exc.code}: {err}")
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"MCP network error: {exc.reason}")
+
+        # Most servers return JSON. If event-stream slips through, parse the last data frame.
+        text = raw.strip()
+        if text.startswith("data:"):
+            data_lines = [ln[5:].strip() for ln in text.splitlines() if ln.startswith("data:")]
+            text = data_lines[-1] if data_lines else "{}"
+
+        try:
+            message = json.loads(text) if text else {}
+        except json.JSONDecodeError:
+            raise RuntimeError(f"Unexpected MCP response: {text[:500]}")
+
+        if include_id and isinstance(message, dict) and "error" in message:
+            raise RuntimeError(f"MCP JSON-RPC error: {json.dumps(message['error'], ensure_ascii=False)}")
+
+        return message if isinstance(message, dict) else {}
+
+    def initialize(self) -> None:
+        initialize_req = {
+            "jsonrpc": "2.0",
+            "id": self._next_id(),
+            "method": "initialize",
+            "params": {
+                "protocolVersion": PROTOCOL_VERSION,
+                "capabilities": {},
+                "clientInfo": {
+                    "name": "filtrix-skills-generate",
+                    "version": "1.0.0",
+                },
+            },
+        }
+        self._post(initialize_req)
+
+        initialized_notice = {
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
+            "params": {},
+        }
+        # Notification may return empty body; ignore parse errors by best effort.
+        try:
+            self._post(initialized_notice, include_id=False)
+        except RuntimeError:
+            pass
+
+    def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        call_req = {
+            "jsonrpc": "2.0",
+            "id": self._next_id(),
+            "method": "tools/call",
+            "params": {
+                "name": name,
+                "arguments": arguments,
+            },
+        }
+        message = self._post(call_req)
+
+        result = message.get("result") if isinstance(message, dict) else None
+        if not isinstance(result, dict):
+            raise RuntimeError(f"Invalid MCP tools/call response: {json.dumps(message, ensure_ascii=False)[:500]}")
+
+        content = result.get("content")
+        if not isinstance(content, list) or not content:
+            raise RuntimeError(f"Invalid MCP tool content: {json.dumps(result, ensure_ascii=False)[:500]}")
+
+        first = content[0]
+        if not isinstance(first, dict) or first.get("type") != "text":
+            raise RuntimeError(f"Unsupported MCP content item: {json.dumps(first, ensure_ascii=False)[:500]}")
+
+        text = first.get("text")
+        if not isinstance(text, str):
+            raise RuntimeError("MCP tool returned non-text content")
+
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            raise RuntimeError(f"MCP tool text is not JSON: {text[:500]}")
+
+        if not isinstance(payload, dict):
+            raise RuntimeError("MCP tool payload is not an object")
+
+        return payload
+
+
+def download_image(url: str) -> bytes:
+    req = urllib.request.Request(url, method="GET")
     try:
-        with urllib.request.urlopen(req) as resp:
-            body = json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode()
-        raise RuntimeError(f"OpenAI API error {e.code}: {err_body}")
-
-    b64 = body.get("data", [{}])[0].get("b64_json")
-    if not b64:
-        # Try URL fallback
-        url = body.get("data", [{}])[0].get("url")
-        if url:
-            with urllib.request.urlopen(url) as img_resp:
-                return img_resp.read()
-        raise RuntimeError("No image data in OpenAI response")
-
-    return base64.b64decode(b64)
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return resp.read()
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"Signed URL HTTP {exc.code}: {exc.read().decode('utf-8', errors='replace')}")
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Signed URL network error: {exc.reason}")
 
 
-# ---------------------------------------------------------------------------
-# Provider: Gemini (gemini-2.5-flash-image)
-# ---------------------------------------------------------------------------
-
-def generate_gemini(prompt: str, size: str, model: str | None, resolution: str | None = None) -> bytes:
-    api_key = os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        raise RuntimeError("GOOGLE_API_KEY not set")
-
-    # Default to Flash (cheaper). Use --model gemini-3-pro-image-preview for higher quality.
-    model = model or "gemini-2.5-flash-image"
-    aspect = GEMINI_ASPECT_MAP.get(size, "1:1")
-
-    image_config: dict = {"aspectRatio": aspect}
-    # Gemini 3 Pro supports imageSize for higher resolutions (1K, 2K, 4K)
-    if resolution and resolution in ("1K", "2K", "4K"):
-        image_config["imageSize"] = resolution
-
-    payload = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "responseModalities": ["TEXT", "IMAGE"],
-            "imageConfig": image_config,
-        },
-    }).encode()
-
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-
-    try:
-        with urllib.request.urlopen(req) as resp:
-            body = json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode()
-        raise RuntimeError(f"Gemini API error {e.code}: {err_body}")
-
-    # Extract image from response
-    candidates = body.get("candidates", [])
-    if not candidates:
-        raise RuntimeError("No candidates in Gemini response")
-
-    parts = candidates[0].get("content", {}).get("parts", [])
-    for part in parts:
-        inline = part.get("inlineData", {})
-        if inline.get("data"):
-            return base64.b64decode(inline["data"])
-
-    # Check for safety block
-    finish = candidates[0].get("finishReason", "")
-    if finish == "IMAGE_SAFETY":
-        raise RuntimeError("Blocked by Gemini safety filter. Try a different prompt.")
-
-    raise RuntimeError("No image data in Gemini response")
-
-
-# ---------------------------------------------------------------------------
-# Provider: fal.ai (SeedReam, etc.)
-# ---------------------------------------------------------------------------
-
-FAL_MODELS = {
-    "seedream4": "fal-ai/bytedance/seedream/v4/text-to-image",
-    "seedream45": "fal-ai/bytedance/seedream/v4.5/text-to-image",
-    "flux-pro": "fal-ai/flux-pro/v1.1",
-    "flux-dev": "fal-ai/flux/dev",
-    "recraft-v3": "fal-ai/recraft-v3",
-}
-
-def generate_fal(prompt: str, size: str, model: str | None, seed: int | None) -> bytes:
-    api_key = os.environ.get("FAL_KEY")
-    if not api_key:
-        raise RuntimeError("FAL_KEY not set")
-
-    model_id = FAL_MODELS.get(model or "seedream45")
-    if not model_id:
-        model_id = model  # Allow raw fal model IDs
-
-    dims = FAL_SIZE_MAP.get(size, {"width": 1024, "height": 1024})
-
-    arguments = {
-        "prompt": prompt,
-        "image_size": {"width": dims["width"], "height": dims["height"]},
-        "num_images": 1,
-    }
-    if seed is not None:
-        arguments["seed"] = seed
-
-    # Use synchronous endpoint (waits for result)
-    url = f"https://fal.run/{model_id}"
-    payload = json.dumps(arguments).encode()
-    req = urllib.request.Request(
-        url,
-        data=payload,
-        headers={
-            "Authorization": f"Key {api_key}",
-            "Content-Type": "application/json",
-        },
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=180) as resp:
-            body = json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode()
-        raise RuntimeError(f"fal.ai API error {e.code}: {err_body}")
-
-    # Extract image URL from response
-    images = body.get("images", [])
-    if not images:
-        raise RuntimeError(f"No images in fal response: {json.dumps(body)[:500]}")
-
-    img_url = images[0].get("url")
-    if not img_url:
-        raise RuntimeError("No image URL in fal response")
-
-    with urllib.request.urlopen(img_url) as img_resp:
-        return img_resp.read()
-
-
-def _poll_fal(api_key: str, model_id: str, request_id: str, max_wait: int = 120) -> str:
-    """Poll fal.ai queue until result is ready."""
-    import time
-    status_url = f"https://queue.fal.run/{model_id}/requests/{request_id}/status"
-    result_url = f"https://queue.fal.run/{model_id}/requests/{request_id}"
-
-    for _ in range(max_wait // 2):
-        req = urllib.request.Request(status_url, headers={"Authorization": f"Key {api_key}"})
-        with urllib.request.urlopen(req) as resp:
-            status = json.loads(resp.read())
-
-        if status.get("status") == "COMPLETED":
-            req = urllib.request.Request(result_url, headers={"Authorization": f"Key {api_key}"})
-            with urllib.request.urlopen(req) as resp:
-                result = json.loads(resp.read())
-            return result.get("images", [{}])[0].get("url", "")
-
-        if status.get("status") in ("FAILED", "CANCELLED"):
-            raise RuntimeError(f"fal.ai job failed: {status}")
-
-        time.sleep(2)
-
-    raise RuntimeError("fal.ai job timed out")
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
-PROVIDERS = {
-    "openai": generate_openai,
-    "gemini": generate_gemini,
-    "fal": generate_fal,
-}
-
-def main():
-    parser = argparse.ArgumentParser(description="Generate images via AI providers")
-    parser.add_argument("--provider", required=True, choices=list(PROVIDERS.keys()),
-                        help="AI provider to use")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate images via Filtrix MCP")
     parser.add_argument("--prompt", required=True, help="Image generation prompt")
-    parser.add_argument("--size", default="1024x1024",
-                        help="Image size (1024x1024, 1536x1024, 1024x1536)")
-    parser.add_argument("--model", default=None,
-                        help="Override default model for the provider")
+    parser.add_argument("--mode", default="gpt-image-1", choices=MODELS,
+                        help="Model selector: gpt-image-1 | nano-banana | nano-banana-2")
+    parser.add_argument("--size", default="1024x1024", choices=SIZES,
+                        help="Output size")
+    parser.add_argument("--resolution", default="1K", choices=RESOLUTIONS,
+                        help="Resolution (only used by nano-banana-2)")
+    parser.add_argument("--search-mode", action="store_true",
+                        help="Enable search mode (only used by nano-banana-2)")
+    parser.add_argument("--enhance-mode", action="store_true",
+                        help="Enable enhanced thinking (only used by nano-banana-2)")
+    parser.add_argument("--idempotency-key", default=None,
+                        help="Optional idempotency key; auto-generated if omitted")
     parser.add_argument("--output", default=None,
-                        help="Output file path (default: auto-generated in /tmp)")
-    parser.add_argument("--seed", type=int, default=None,
-                        help="Random seed (fal provider only)")
-    parser.add_argument("--resolution", default=None, choices=["1K", "2K", "4K"],
-                        help="Output resolution (gemini provider only, requires gemini-3-pro-image-preview)")
+                        help="Output image path (default: /tmp/filtrix_mcp_<timestamp>.png)")
+    parser.add_argument("--print-json", action="store_true",
+                        help="Print raw MCP tool payload")
     args = parser.parse_args()
 
-    # Default output path
-    if not args.output:
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.output = f"/tmp/filtrix_{args.provider}_{ts}.png"
-
-    # Generate
-    provider_fn = PROVIDERS[args.provider]
-    kwargs = {"prompt": args.prompt, "size": args.size, "model": args.model}
-    if args.provider == "fal":
-        kwargs["seed"] = args.seed
-    if args.provider == "gemini":
-        kwargs["resolution"] = args.resolution
-
-    try:
-        image_bytes = provider_fn(**kwargs)
-    except RuntimeError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
+    mcp_api_key = os.environ.get("FILTRIX_MCP_API_KEY") or os.environ.get("MCP_API_KEY")
+    if not mcp_api_key:
+        print("ERROR: FILTRIX_MCP_API_KEY is required", file=sys.stderr)
         sys.exit(1)
 
-    # Save
+    mcp_url = os.environ.get("FILTRIX_MCP_URL", DEFAULT_MCP_URL)
+    request_key = args.idempotency_key or f"gen-{uuid.uuid4().hex}"
+
+    client = McpClient(endpoint=mcp_url, api_key=mcp_api_key)
+
+    try:
+        client.initialize()
+        tool_payload = client.call_tool(
+            "generate_image_text",
+            {
+                "prompt": args.prompt,
+                "mode": args.mode,
+                "size": args.size,
+                "resolution": args.resolution,
+                "search_mode": bool(args.search_mode),
+                "enhance_mode": bool(args.enhance_mode),
+                "idempotency_key": request_key,
+            },
+        )
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.print_json:
+        print(json.dumps(tool_payload, ensure_ascii=False, indent=2))
+
+    if tool_payload.get("ok") is not True:
+        print(f"ERROR: generation failed: {json.dumps(tool_payload, ensure_ascii=False)}", file=sys.stderr)
+        sys.exit(1)
+
+    image_url = tool_payload.get("image_url")
+    if not isinstance(image_url, str) or not image_url:
+        print(f"ERROR: MCP did not return image_url: {json.dumps(tool_payload, ensure_ascii=False)}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        image_bytes = download_image(image_url)
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if not args.output:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        args.output = f"/tmp/filtrix_mcp_{args.mode}_{ts}.png"
+
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_bytes(image_bytes)
 
+    credits_used = tool_payload.get("credits_used")
     print(f"OK: {out_path} ({len(image_bytes)} bytes)")
+    print(f"mode={args.mode} idempotency_key={request_key} credits_used={credits_used}")
 
 
 if __name__ == "__main__":

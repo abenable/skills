@@ -11,13 +11,7 @@ Write to `<project>/.openclaw/context-<task-id>.md` before spawning:
 - Path: /path/to/project
 - Stack: Laravel 10 + React 18 + TypeScript + Inertia.js
 - Architecture: Action-based (not Service layer)
-
-## Coding Standards (key rules)
-- KISS + SOLID + DRY
-- Action pattern for business logic
-- FormRequest for validation, Policy for authorization
-- Methods <200 lines, follow existing code style
-- Clear commit messages
+- Note: Project has CLAUDE.md with full standards — don't repeat here
 
 ## Historical Context
 - [From memory recall] 2026-02-20: Switched to Action pattern

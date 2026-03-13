@@ -45,22 +45,31 @@ Notation: `[memory]` `[qmd]` `[acp]` = use if available, fallback if not.
 
 ## ACP Agent Routing
 
-When multiple coding agents are configured (check `acp.allowedAgents` in openclaw.json):
+**ACP access**: `sessions_spawn(runtime="acp")` may not be available (platform limitation). Use **acpx CLI** as the reliable path:
+
+```bash
+# One-shot execution via acpx (works from any session type)
+cmd /c "C:\Users\beyou\AppData\Roaming\npm\node_modules\openclaw\extensions\acpx\node_modules\.bin\acpx.cmd --verbose --agent \"node C:/Users/beyou/AppData/Roaming/npm/node_modules/@zed-industries/claude-agent-acp/dist/index.js\" exec \"<your prompt>\" 2>&1"
+```
+
+If `sessions_spawn(runtime="acp")` is available in your session, use it. Otherwise fall back to acpx CLI via `exec`.
+
+Check `acp.allowedAgents` in openclaw.json for available agents:
 
 | Task Type | Best Agent | Why |
 |-----------|-----------|-----|
-| Complex backend, multi-file refactor, deep reasoning | **claude-code** | Superior cross-file reasoning, long context |
+| Complex backend, multi-file refactor, deep reasoning | **claude** | Superior cross-file reasoning, long context |
 | Quick iteration, autonomous exploration, sandbox tasks | **codex** | Fast, autonomous, good at iterative fixes |
 | Code review | Different agent than the one that wrote it | Avoid same-bias blind spots |
 
 ### How to route
 
 ```
-# Default (uses acp.defaultAgent):
+# Default (uses acp.defaultAgent, typically "claude"):
 sessions_spawn(runtime: "acp", task: <prompt>, cwd: <dir>)
 
 # Explicit agent:
-sessions_spawn(runtime: "acp", agentId: "claude-code", task: <prompt>, cwd: <dir>)
+sessions_spawn(runtime: "acp", agentId: "claude", task: <prompt>, cwd: <dir>)
 sessions_spawn(runtime: "acp", agentId: "codex", task: <prompt>, cwd: <dir>)
 ```
 
@@ -70,15 +79,39 @@ sessions_spawn(runtime: "acp", agentId: "codex", task: <prompt>, cwd: <dir>)
 If one agent fails/unavailable, try the other before falling back to direct execution.
 
 ### Parallel with different agents
-For complex tasks, can spawn both agents on different sub-tasks:
+For complex tasks with independent sub-tasks (max 2 parallel):
 ```
-Session 1: claude-code → backend refactor (needs deep reasoning)
+Session 1: claude → backend refactor (needs deep reasoning)
 Session 2: codex → frontend fixes (needs fast iteration)
 ```
 
+## Coding Standards — Two Layers, No Overlap
+
+### Layer 1: Project-level (Claude Code owns)
+Projects may have their own `CLAUDE.md`, `.cursorrules`, `docs/` — these are **Claude Code's responsibility**. It reads them automatically. **Do NOT paste project-level rules into ACP prompts.**
+
+### Layer 2: Team-level (OpenClaw owns)
+`shared/knowledge/tech-standards.md` — cross-project standards (security, change control, tech stack preferences). Only relevant for **direct execution** (simple tasks without ACP).
+
+### When spawning ACP
+- **Don't** embed coding standards in the prompt — Claude Code has its own CLAUDE.md
+- **Do** include: task description, acceptance criteria, relevant context (file paths, decisions)
+- **Do** include task-specific constraints if any (e.g., "don't change the API contract")
+
+### When executing directly (no ACP)
+Load standards once per session, first match wins:
+1. `shared/knowledge/tech-standards.md` (team-level, if exists)
+2. Built-in defaults (below, if nothing exists)
+
+### Built-in Defaults (fallback for direct execution)
+- KISS + SOLID + DRY, research before modifying
+- Methods <200 lines, follow existing architecture
+- No hardcoded secrets, minimal change scope, clear commits
+- DB changes via SQL scripts, new tech requires confirmation
+
 ## Simple Tasks
 
-1. Read target file(s) + coding standards (CLAUDE.md, tech-standards.md, .cursorrules)
+1. Read target file(s) (standards already loaded per above)
 2. [memory] Recall related decisions
 3. Execute with read/write/edit/exec
 4. [memory] Record what changed and why
@@ -92,17 +125,17 @@ Write to `<project>/.openclaw/context-<task-id>.md` (ACP reads from disk, not fr
 ```bash
 # [qmd] or grep: find relevant code
 # [memory] recall + lessons: find past decisions
-# Read project standards (CLAUDE.md, tech-standards.md, .cursorrules)
-# Write context file with sections below
+# Standards already loaded (see "Coding Standards Loading" above)
+# Write context file with 3-5 key rules from loaded standards — do NOT paste full file
 ```
 
 Minimal context file structure:
 ```markdown
 # Task Context: <id>
 ## Project — path, stack, architecture style
-## Standards — key coding rules (3-5 bullets)
 ## Relevant Code — file paths + brief descriptions from qmd/grep
 ## History — past decisions/lessons from memory (if any)
+## Constraints — task-specific rules only (NOT general coding standards — Claude Code has CLAUDE.md)
 ```
 
 Full template with examples → see [references/prompt-templates.md](references/prompt-templates.md)
@@ -127,7 +160,12 @@ When done: openclaw system event --text "Done: <summary>" --mode now
 ### Step 3: Spawn
 
 ```
+# Option A: sessions_spawn (if available in your session)
 sessions_spawn(runtime: "acp", task: <prompt>, cwd: <project-dir>, mode: "run")
+
+# Option B: acpx CLI (always works)
+exec: acpx --agent "node C:/Users/beyou/AppData/Roaming/npm/node_modules/@zed-industries/claude-agent-acp/dist/index.js" exec "<prompt>"
+# Set cwd to project dir in exec command
 ```
 
 ### Step 4: Fallback Detection
@@ -158,6 +196,9 @@ Read [references/complex-tasks.md](references/complex-tasks.md) **only for Compl
 - **Parallel**: one context file, multiple ACP sessions read it
 - **Serial**: use `mode: "session"` + `sessions_send` for follow-ups
 - **[qmd]**: precision search → only relevant snippets in context file
+- **No standards in ACP prompts**: Claude Code reads its own CLAUDE.md/.cursorrules — don't duplicate
+- **ACP prompt stays lean**: task + acceptance criteria + context file path. No generic rules
+- **Direct execution**: load team standards once per session, not per task
 
 ## Memory Integration
 
@@ -170,7 +211,7 @@ Read [references/complex-tasks.md](references/complex-tasks.md) **only for Compl
 - Each project gets its own context file in its own `.openclaw/` dir
 - Spawn with different `cwd` per project — zero cross-contamination
 - Tag memory entries per project: `--tags code,<project-name>`
-- **2-3 parallel ACP sessions** safe; 4-5 with multiple providers
+- **Max 2 parallel ACP sessions** — keep token/resource use predictable
 - ACP runs in background while agent works on simple tasks directly
 
 See [references/prompt-templates.md](references/prompt-templates.md) for multi-project examples.

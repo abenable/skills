@@ -12,80 +12,36 @@ Skip steps that don't apply. Not every complex task needs all steps.
 
 ## Coding Roles
 
-For complex multi-layer tasks, spawn separate ACP sessions with role-specific prompts:
+**Don't micromanage Claude Code's internal roles.** If Claude Code has its own agent system (e.g., oh-my-claudecode, project-level `.claude/agents/`), it handles role routing internally — architect, reviewer, QA, etc. Just give it the task.
 
-| Role | When to Use | Prompt Prefix |
-|------|------------|---------------|
-| **Architect** | System design, DB schema, API contracts | "You are a senior software architect. Design scalable, maintainable systems. Output: design doc with file structure, DB schema, API contracts, and implementation notes." |
-| **Frontend** | UI components, pages, responsive design | "You are a frontend specialist. Write clean, accessible, performant UI code. Follow the project's frontend patterns." |
-| **Backend** | API endpoints, business logic, data layer | "You are a backend specialist. Write secure, efficient server-side code. Follow the project's backend patterns." |
-| **Reviewer** | Code review after implementation | "You are a senior code reviewer. Review for: logic errors, security issues, performance problems, style violations. Be specific, cite line numbers." |
-| **QA** | Test writing, edge case analysis | "You are an independent QA engineer. You have NOT seen the implementation code. Based on requirements and interface definitions, write thorough tests." |
-
-### Flow with Roles
+OpenClaw's job for complex tasks:
 
 ```
-1. RESEARCH (agent reads code, searches memory + qmd)
-2. PLAN (agent designs approach, gets confirmation)
-3. ARCHITECT (spawn) — if task needs design decisions
-   → output: design doc, schema, API contracts
-4. IMPLEMENT (spawn, can be parallel)
-   → Frontend session (if UI involved)
-   → Backend session (if API/logic involved)
-   → Or single fullstack session for smaller scope
-5. REVIEW (spawn) — independent reviewer session
-6. QA (spawn) — isolated test writing (see below)
-7. FIX (spawn or sessions_send) — address findings
-8. RECORD (agent logs to memory)
+1. RESEARCH (OpenClaw agent reads code, searches memory + qmd)
+2. PLAN (agent designs approach, gets confirmation if needed)
+3. EXECUTE (spawn ACP — one prompt, Claude Code handles internal delegation)
+4. VERIFY (check acceptance criteria after completion)
+5. RECORD (log to memory)
 ```
 
-### Parallel Spawning
+### When to spawn multiple ACP sessions (max 2)
 
-Frontend and backend can run in parallel when independent:
-
+Only when tasks are **truly independent** (different projects or zero file overlap):
 ```
-# Parallel — both read same context file
-Session 1: Frontend → "Read .openclaw/context-xxx.md. Build FavoriteButton component..."
-Session 2: Backend → "Read .openclaw/context-xxx.md. Build favorites API endpoint..."
-
-# Sequential — must wait for both
-Session 3: Reviewer → "Review all changes from sessions above..."
+Session 1: "Build favorites backend API..." (cwd: project-a)
+Session 2: "Fix CSS layout bug..." (cwd: project-b)
 ```
 
-Write ONE context file. All parallel sessions read it. Zero redundancy.
+For complex tasks within ONE project, prefer a single ACP session — Claude Code's internal agents parallelize better than multiple external spawns.
 
-**Limit: 2-3 parallel sessions** to stay within API rate limits.
+## QA Isolation
 
-## QA Isolation Rule
+If Claude Code has internal QA agents (e.g., OMC test-engineer, qa-tester), it handles test isolation internally.
 
-> **Critical**: QA sessions must be isolated from implementation to avoid "testing your own homework."
+If you need to ensure isolation explicitly, mention it in the ACP prompt:
+> "Write tests based on requirements and interfaces only, not implementation. Use a separate agent/session for tests."
 
-### QA Prompt Structure
-
-```
-You are an independent QA engineer. You have NOT seen the implementation.
-
-## What to Test
-[Requirements / user story / acceptance criteria]
-
-## Interfaces
-[Function signatures, API endpoints, DB schema — NO implementation details]
-
-## Project Test Setup
-[Test framework, how to run tests, existing test patterns]
-
-## Write Tests For
-- Happy paths (normal usage)
-- Edge cases (empty input, max values, unicode, special chars)
-- Error paths (invalid input, network failure, timeout)
-- Boundary conditions (off-by-one, pagination limits)
-- Business logic edges (concurrent access, partial failure)
-
-Do NOT assume implementation details. Test the contract, not the code.
-```
-
-### Why Isolation Matters
-When AI writes code and tests in the same session, tests mirror the implementation — including its bugs. Isolation forces tests from "what should happen" not "what does happen."
+The principle: tests should verify the contract, not mirror the code.
 
 ## RESEARCH Phase (No Changes)
 
@@ -104,26 +60,20 @@ DO NOT make any changes. Only report:
 Use qmd/grep/find to explore. Read .openclaw/context-xxx.md for project context.
 ```
 
-## Agent & Model Routing
+## Agent Routing
 
-When multiple ACP agents are configured (`acp.allowedAgents`):
+Route via `agentId` in `sessions_spawn`. Fallback: preferred → alternate → direct execution.
+Claude Code handles its own internal agent selection (OMC, project agents, etc.) — don't duplicate.
 
-| Task Type | Agent | Why |
-|-----------|-------|-----|
-| Complex backend, architecture, multi-file | **claude-code** | Deep reasoning, long context |
-| Quick fixes, iteration, exploration | **codex** | Fast, autonomous |
-| Code review | Different agent than writer | Avoid same-bias |
+## Verification
 
-Route via `agentId` in `sessions_spawn`. If only one agent available, skip routing.
-Fallback: preferred → alternate → direct execution.
+| Level | What OpenClaw checks |
+|-------|---------------------|
+| Simple | No formal review |
+| Medium | Success reported? Tests pass? |
+| Complex | Acceptance criteria met? Tests pass? No unrelated changes? |
 
-## Review by Complexity
-
-| Level | Review Action |
-|-------|--------------|
-| Simple (agent did it) | No formal review |
-| Medium (ACP) | Quick check: success reported? Tests pass? Skim for obvious errors |
-| Complex (ACP multi-file) | Full checklist: logic, security, performance, style, tests |
+Code review itself is Claude Code's job (it has reviewers internally).
 
 ## Definition of Done
 
@@ -161,15 +111,9 @@ Track active tasks in `<project>/.openclaw/active-tasks.json`:
 Update on completion/failure. Clean up entries older than 7 days.
 Add `.openclaw/` to `.gitignore`.
 
-## Claude Code Tool Tips
+## Claude Code Tools
 
-Remind in spawned prompts:
-- LSP (goToDefinition, findReferences) for code structure
-- Grep/Glob for finding files
-- mcp__context7 for library docs
-- mcp__mcp-deepwiki for open-source project docs
-
-These are Claude Code tools, not OpenClaw tools.
+Claude Code has its own tools (LSP, Grep, MCP plugins, etc.). Don't list them in ACP prompts — it knows what it has. Only mention a specific tool if the task requires it (e.g., "use Playwright MCP to test the page").
 
 ## Prompt Pattern Library
 

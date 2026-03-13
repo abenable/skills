@@ -3,11 +3,16 @@
   "slug": "knowfun-skills",
   "displayName": "Knowfun",
   "latest": {
-    "version": "1.0.14",
-    "publishedAt": 1773065439918,
-    "commit": "https://github.com/openclaw/skills/commit/e5409c29d54c7fa0aff8ef6a3577c3ddc9abfd39"
+    "version": "1.0.15",
+    "publishedAt": 1773311345983,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.14",
+      "publishedAt": 1773065439918,
+      "commit": "https://github.com/openclaw/skills/commit/e5409c29d54c7fa0aff8ef6a3577c3ddc9abfd39"
+    },
     {
       "version": "1.0.11",
       "publishedAt": 1772992147646,

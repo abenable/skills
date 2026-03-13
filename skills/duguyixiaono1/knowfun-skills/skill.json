@@ -3,7 +3,7 @@
   "kind": "AgentSkill",
   "metadata": {
     "name": "knowfun",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "description": "KnowFun AI multimodal content generator - Create AI PPT presentations, visual posters, interactive learning games, and educational films using lightning-fast REST API. Transform text and web content into engaging educational materials. Perfect for educators, trainers, content creators, and learners. Seamlessly integrates with Claude Code, Cursor, Cline, and OpenClaw AI assistants",
     "author": "Knowfun.io Team",
     "license": "MIT",

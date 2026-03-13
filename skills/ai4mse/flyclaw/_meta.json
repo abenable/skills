@@ -3,11 +3,16 @@
   "slug": "flyclaw",
   "displayName": "FlyClaw",
   "latest": {
-    "version": "0.3.1",
-    "publishedAt": 1773042039980,
-    "commit": "https://github.com/openclaw/skills/commit/9c334bde904666654f5fe15e2bfdee74a0b7bb9c"
+    "version": "0.3.3",
+    "publishedAt": 1773291410965,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.3.1",
+      "publishedAt": 1773042039980,
+      "commit": "https://github.com/openclaw/skills/commit/9c334bde904666654f5fe15e2bfdee74a0b7bb9c"
+    },
     {
       "version": "0.2.12",
       "publishedAt": 1772981961909,

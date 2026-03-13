@@ -6,20 +6,27 @@ read_when:
   - You want to record a decision, fact, task, or question
   - You're asked about what you remember or know
   - You need to check or update the subject registry
+metadata:
+  openclaw:
+    homepage: https://github.com/maxpetretta/reclaw
+    requires:
+      bins:
+        - openclaw
 ---
 
 # Reclaw Memory System
 
-Reclaw is an append-only event log that replaces daily memory files. All memory lives in `log.jsonl` as structured entries. Extraction happens automatically at session end — you don't write to the log directly. Your job is to state information clearly in conversation so the extraction hook captures it.
+Reclaw is an append-only event log that replaces daily memory files. It assumes the current OpenClaw environment already has the Reclaw plugin installed. All memory lives in `log.jsonl` as structured entries. Extraction happens automatically at session end — you don't write to the log directly. Your job is to state information clearly in conversation so the extraction hook captures it.
 
 ## How Memory Works
 
 1. **MEMORY.md** is auto-loaded into every session. It has a manual section (goals, preferences) and a generated Reclaw memory snapshot updated nightly.
-2. **Reclaw session handoff** is written into MEMORY.md after each session extraction.
-3. **`memory_search`** finds entries by keyword, type, subject, or status.
-4. **`memory_get`** retrieves a specific entry by ID, reads MEMORY.md, or fetches a full session transcript.
+2. **Reclaw session summary** is written into `MEMORY.md` after each session extraction.
+3. **Subject markdown projections** are generated under `~/.openclaw/reclaw/memory/` so OpenClaw can semantically index event-log content through its builtin markdown memory path.
+4. **`memory_search`** finds entries by keyword, type, subject, or status when the Reclaw plugin has registered that tool in the current OpenClaw environment, and can hit semantic results from `MEMORY.md` plus generated subject projections.
+5. **`memory_get`** retrieves a specific entry by ID, reads `MEMORY.md`, or fetches a full session transcript when the Reclaw plugin has registered that tool in the current OpenClaw environment.
 
-Start with what's already in context (steps 1-2). Only call tools when you need something specific.
+Start with what's already in context (steps 1-3). Only call tools when you need something specific.
 
 ## Entry Types
 
@@ -29,11 +36,11 @@ Start with what's already in context (steps 1-2). Only call tools when you need 
 | `fact` | User-specific information learned | Preferences, events, observations, milestones |
 | `decision` | A choice with reasoning | Use `detail` for the "why" |
 | `question` | An unresolved open loop | Resolved by later entries on the same subject |
-| `handoff` | Session boundary state | One per session, summarizes what's in-flight |
+| `session_summary` | Session boundary state | One per session, summarizes what's in-flight |
 
 ## Subjects
 
-Every non-handoff entry has a `subject` — a kebab-case slug like `auth-migration` or `reclaw`. Subjects are tracked in a registry with a type: `project`, `person`, `system`, or `topic` (default).
+Every non-`session_summary` entry has a `subject` — a kebab-case slug like `auth-migration` or `reclaw`. Subjects are tracked in a registry with a type: `project`, `person`, `system`, or `topic` (default).
 
 When discussing something new, use a clear kebab-case slug. The extraction hook auto-creates subjects it hasn't seen. To explicitly manage subjects:
 
@@ -51,7 +58,7 @@ openclaw reclaw subjects rename old-slug new-slug
 
 ## Using `memory_search`
 
-Combines structured log filters with keyword search and MEMORY.md semantic search.
+Combines structured log filters with keyword search and semantic search over `MEMORY.md` plus generated subject projections.
 
 ```
 # Keyword search
@@ -67,6 +74,15 @@ memory_search({"query": "backoff", "type": "fact", "subject": "auth-migration"})
 ```
 
 At least one of `query`, `type`, `subject`, or `status` is required.
+
+## Markdown Projections
+
+Reclaw keeps one generated markdown file per subject under `~/.openclaw/reclaw/memory/`. These files are derived from `log.jsonl` and exist so OpenClaw's builtin markdown indexer can semantically search event-log content.
+
+- Treat projection files as generated output — don't manually edit them
+- Successful live extraction refreshes touched subject projections automatically
+- Successful non-dry-run imports refresh the full projection set automatically
+- If the index seems stale, rebuild with `openclaw reclaw projection refresh`
 
 ## Using `memory_get`
 
@@ -124,11 +140,15 @@ openclaw reclaw subjects list
 openclaw reclaw subjects add <slug> --type <project|person|system|topic>
 openclaw reclaw subjects rename <old-slug> <new-slug>
 
-# Regenerate the MEMORY.md memory snapshot now
-openclaw reclaw snapshot generate
+# Refresh generated subject markdown projections
+openclaw reclaw projection refresh
+openclaw reclaw projection list
 
-# Force-refresh MEMORY.md session handoff block from log
-openclaw reclaw handoff refresh
+# Regenerate the MEMORY.md memory snapshot now
+openclaw reclaw snapshot refresh
+
+# Force-refresh MEMORY.md session summary block from log
+openclaw reclaw summary refresh
 
 # Import historical conversations
 openclaw reclaw import <chatgpt|claude|grok|openclaw> <file>

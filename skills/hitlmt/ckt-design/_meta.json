@@ -1,11 +1,17 @@
 {
   "owner": "hitlmt",
   "slug": "ckt-design",
-  "displayName": "Ckt Design",
+  "displayName": "创客贴智能海报设计",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1772762723348,
-    "commit": "https://github.com/openclaw/skills/commit/2b2661cdbd1d72a7b704efb1e9de6943aae8fa6d"
+    "version": "1.0.3",
+    "publishedAt": 1773395496944,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1772762723348,
+      "commit": "https://github.com/openclaw/skills/commit/2b2661cdbd1d72a7b704efb1e9de6943aae8fa6d"
+    }
+  ]
 }

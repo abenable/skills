@@ -3,9 +3,15 @@
   "slug": "a-stock-kline-analyzer",
   "displayName": "A-Stock Kline Analyzer",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773062279580,
-    "commit": "https://github.com/openclaw/skills/commit/6a78dd4f8812d89acdfd300f8587e560946cd73b"
+    "version": "1.0.3",
+    "publishedAt": 1773315529246,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773062279580,
+      "commit": "https://github.com/openclaw/skills/commit/6a78dd4f8812d89acdfd300f8587e560946cd73b"
+    }
+  ]
 }

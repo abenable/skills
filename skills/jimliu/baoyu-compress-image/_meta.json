@@ -3,9 +3,15 @@
   "slug": "baoyu-compress-image",
   "displayName": "Baoyu Compress Image",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773072630400,
-    "commit": "https://github.com/openclaw/skills/commit/18f569fa26f4c65b901d19b72d0703bc7fc133a8"
+    "version": "1.60.0",
+    "publishedAt": 1773287342320,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773072630400,
+      "commit": "https://github.com/openclaw/skills/commit/18f569fa26f4c65b901d19b72d0703bc7fc133a8"
+    }
+  ]
 }

@@ -1,11 +1,17 @@
 {
   "owner": "douxc",
   "slug": "colors-cc-skill",
-  "displayName": "Colors Cc",
+  "displayName": "Colors CC",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1773124279191,
-    "commit": "https://github.com/openclaw/skills/commit/7afd069ee71075cea576f0aad8c8b9300d5d9279"
+    "version": "0.2.1",
+    "publishedAt": 1773371021412,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1773124279191,
+      "commit": "https://github.com/openclaw/skills/commit/7afd069ee71075cea576f0aad8c8b9300d5d9279"
+    }
+  ]
 }

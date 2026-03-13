@@ -1,11 +1,17 @@
 {
   "owner": "alirezarezvani",
   "slug": "cs-competitor-alternatives",
-  "displayName": "Competitor Alternatives",
+  "displayName": "competitor-alternatives",
   "latest": {
-    "version": "2.1.1",
-    "publishedAt": 1773088001351,
-    "commit": "https://github.com/openclaw/skills/commit/4a6c004ac68303a56206348fa08c6048eeada709"
+    "version": "1.0.0",
+    "publishedAt": 1773244252701,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.1.1",
+      "publishedAt": 1773088001351,
+      "commit": "https://github.com/openclaw/skills/commit/4a6c004ac68303a56206348fa08c6048eeada709"
+    }
+  ]
 }

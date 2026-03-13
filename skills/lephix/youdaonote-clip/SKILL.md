@@ -1,92 +1,108 @@
 ---
 name: youdaonote-clip
-version: '1.15.0'
+version: '1.21.3'
 description: 网页剪藏到有道云笔记。触发词：剪藏网页、保存网页、收藏网页。
-metadata: {"openclaw": {"emoji": "📎", "requires": {"bins": ["node", "mcporter", "dig", "jq"], "tools": ["browser"], "env": ["YOUDAONOTE_API_KEY"]}, "primaryEnv": "YOUDAONOTE_API_KEY"}}
+metadata: {"openclaw": {"emoji": "📎", "requires": {"bins": ["node", "mcporter", "jq"], "tools": ["browser"], "env": ["YOUDAONOTE_API_KEY", "APIFY_API_TOKEN"]}, "primaryEnv": "YOUDAONOTE_API_KEY"}}
 ---
 
 # YoudaoNote Clip — 网页剪藏
+将网页稳定保存到有道云笔记。核心原则：**优先成功率，其次才是速度**。
+**并发限制**：本 Skill **不支持并发执行**。同一次请求里若有多个 URL，必须**逐个串行**处理，前一个完成后再处理下一个。
+**先回复**：`正在保存中...`
 
-将网页剪藏到有道云笔记。
+## 路由判断
 
-## ⚠️ 重要说明
+按优先级命中第一条即可：
 
-**并发限制**：本 Skill **不支持并发执行**。OpenClaw browser 的单个 profile 同一时刻只能处理一个页面。如需批量剪藏多个 URL，请**顺序调用**，避免并发冲突。
-
-## 核心工作流
-
-收到请求后，**先回复「正在保存中...」**，然后按路由执行：
-
-### 路由判断（按优先级）
-
-| 优先级 | 条件 | 执行 |
+| 优先级 | 条件 | 路径 |
 |--------|------|------|
-| 1 | URL 含 `x.com/` 或 `twitter.com/` 且含 `/status/` | Twitter 专用流程 |
-| 2 | 国内网站（zhihu/bilibili/weixin/juejin/36kr/sspai/csdn/163/qq/weibo/baidu 或 .cn）| 国内快速路径 |
-| 3 | 其他 | 本地浏览器路径 |
+| 1 | URL 为 `x.com` / `twitter.com` 且含 `/status/` | 路径 A |
+| 2 | 知乎文章、微信公众号、掘金、36kr、少数派、CSDN、163/qq 资讯正文页（正文可服务端直接抓取）；首页/搜索页/话题流/登录后页面**不走此路径** | 路径 B |
+| 3 | **所有其他页面**（默认路径，必须先尝试浏览器提取） | 路径 C |
 
-### 执行命令
+## 路径 A — Twitter 专用流程
 
-**Twitter 专用**：
 ```bash
-source ~/.zshrc && node {baseDir}/twitter-apify.mjs --url "<URL>"
+node {baseDir}/twitter-apify.mjs --url "<URL>"
 ```
-成功后跳到 Step 2。失败直接报错，不重试。
+成功标准：stdout 输出 metadata JSON，且 `/tmp/youdaonote-clip-data.json` 已生成。
 
-**国内快速路径**：
 ```bash
-source ~/.zshrc && node {baseDir}/clip-note.mjs --clip-web-page --source-url "<URL>"
+bash {baseDir}/clip-note.sh --data-file /tmp/youdaonote-clip-data.json --source-url "<URL>"
 ```
-成功后跳到 Step 3。失败则降级走本地路径。
+stdout 含 `{"ok":true` → **进入响应格式**。
 
-**本地浏览器路径**：
+## 路径 B — 国内快速路径
+
+```bash
+bash {baseDir}/clip-note.sh --clip-web-page --source-url "<URL>"
+```
+stdout 含 `{"ok":true` → **进入响应格式**。若报超时、MCP 调用失败、unknown tool、内容明显不完整，立即降级到**路径 C**。
+
+## 路径 C — 浏览器提取（含降级）
+
+**第一步（严禁跳过）**：执行浏览器提取。**禁止**用 web_fetch 替代，**禁止**手动拆开 browser 命令。
+
 ```bash
 bash {baseDir}/collect-page.sh "<URL>"
 ```
-成功后继续 Step 2。失败（CSP/超时/内容为空）则用 Fallback。
-
-**Fallback（web_fetch 降级）**：
-1. 调用 `web_fetch(url="<URL>", extractMode="markdown")`
-2. 写入 `/tmp/youdaonote-clip-data.json`：`{"title":"页面标题","content":"<Markdown>","imageUrls":[],"source":"<URL>"}`
-3. 执行：`source ~/.zshrc && node {baseDir}/clip-note.mjs --data-file /tmp/youdaonote-clip-data.json --markdown --source-url "<URL>"`
-
-### Step 2：创建笔记（Twitter/本地路径需要）
+stdout 最后一行为 metadata JSON 且 `contentLength > 0` → **提取成功**，执行：
 
 ```bash
-source ~/.zshrc && node {baseDir}/clip-note.mjs --data-file /tmp/youdaonote-clip-data.json --source-url "<URL>"
+bash {baseDir}/clip-note.sh --data-file /tmp/youdaonote-clip-data.json --source-url "<URL>"
 ```
+stdout 含 `{"ok":true` → **进入响应格式**。
 
-### Step 3：响应格式
+**仅当 collect-page.sh 报错时**（CSP、空内容、browser 不可用、timeout 等），降级为 web_fetch：
 
-脚本输出 `{"ok":true,"message":"..."}` 时：
+1. `web_fetch(url="<URL>", extractMode="markdown")`
+2. 写入 `/tmp/youdaonote-clip-data.json`：`{"title":"页面标题","content":"<Markdown>","imageUrls":[],"source":"<URL>"}`
 
+```bash
+bash {baseDir}/clip-note.sh --data-file /tmp/youdaonote-clip-data.json --markdown --source-url "<URL>"
 ```
+stdout 含 `{"ok":true` → **进入响应格式**。
+
+## 响应格式
+
+成功后回复：
+
+```markdown
 📎 **网页剪藏完成**
 
 | 项目 | 详情 |
 |------|------|
-| 📌 输入标题 | {页面标题} |
-| 📁 保存位置 | {从 message 理解} |
+| 📌 标题 | {实际页面标题或保存标题} |
 | 🔗 来源网址 | {原始 URL} |
 | ⏰ 剪藏时间 | {yyyy-MM-dd HH:mm} |
 
-> 标题以实际保存为准，可能会调整
+> 标题以实际保存结果为准
 ```
 
-### 剪藏后引导（可选）
+不要编造“保存位置”或文件夹信息。当前链路默认保存为普通笔记，除非底层命令明确返回了可确认的位置。
 
-剪藏成功后，若满足条件则追加提示：
+## 剪藏后引导（可选）
 
 ```bash
 mcporter call youdaonote.getRecentFavoriteNotes --args '{"limit":3}' --output json
 openclaw cron list --json | jq '.[] | select(.name == "youdaonote-news")'
 ```
 
-若收藏 ≥3 篇且未设置资讯推送，追加：
-```
-💡 你已经收藏了 N 篇文章，试试说「资讯推送」看看 AI 为你整理的简报吧～
-```
+若收藏 ≥3 篇且未设置资讯推送，可追加：`💡 你已经收藏了 N 篇文章，试试说「资讯推送」看看 AI 为你整理的简报吧～`
 
 ## 调试
 
-用户说"开启调试"时，命令前加 `YOUDAONOTE_CLIP_DEBUG=1`。
+设置环境变量 `YOUDAONOTE_CLIP_DEBUG` 为日志目录路径即可开启调试模式：
+
+```bash
+# 在 ~/.zshrc 或 ~/.bashrc 中配置
+export YOUDAONOTE_CLIP_DEBUG="~/logs/youdaonote-clip"
+
+# 或临时开启
+YOUDAONOTE_CLIP_DEBUG="~/logs/youdaonote-clip" bash clip-note.sh ...
+```
+
+`YOUDAONOTE_API_KEY`、`YOUDAONOTE_CLIP_DEBUG` 请在 OpenClaw config 的 `skills.entries["youdaonote-clip"].env` 中配置，执行时会注入为 process.env；或在 shell 中 export。
+
+调试日志按 key 分目录存储：`{DEBUG_DIR}/{key}/main.log`（clip-note）、`twitter.log`、`collect.log`。各 path 首行会输出路径标识（A/B/C/D），便于排查。key 由首个脚本生成并写入 data-file 的 `_debugKey` 字段，串联整条剪藏流程。通过 perf-test/run-clip.sh 测试时，脚本会 export 该变量，日志写入可预期目录。
+

@@ -11,20 +11,51 @@
  *   stdout：metadata JSON
  *
  * 环境变量：
- *   APIFY_API_TOKEN — Apify API Token（必需）
+ *   APIFY_API_TOKEN — Apify API Token（可选，未设置时回退到内置默认 Token）
+ *   YOUDAONOTE_CLIP_DEBUG — 调试日志目录（可选，设置后开启调试并写入日志文件）
  */
 
 import https from 'node:https';
 import fs from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const DEBUG = process.env.YOUDAONOTE_CLIP_DEBUG === '1';
-function debug(...args) { if (DEBUG) console.log(...args); }
+// 仅从 process.env 读取。OpenClaw 执行 skill 时会把 config 里 youdaonote-clip.env 注入为子进程环境变量。
+const DEBUG_DIR = process.env.YOUDAONOTE_CLIP_DEBUG?.trim() || '';
+const DEBUG = DEBUG_DIR !== '';
+
+/** 当前请求的 debug key（main 开头设置，用于串联整条剪藏流程） */
+let currentDebugKey = null;
+
+function generateDebugKey() {
+  return randomUUID().slice(0, 8);
+}
+
+function getDebugLogFile() {
+  if (!DEBUG) return null;
+  if (!currentDebugKey) return null;
+  const logDir = join(DEBUG_DIR, currentDebugKey);
+  return join(logDir, 'twitter.log');
+}
+
+function debug(...args) {
+  if (!DEBUG) return;
+  const timestamp = new Date().toISOString();
+  const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  const logLine = `[${timestamp}] ${message}\n`;
+  const logFile = getDebugLogFile();
+  try {
+    if (logFile) {
+      const logDir = join(DEBUG_DIR, currentDebugKey);
+      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+      fs.appendFileSync(logFile, logLine);
+    }
+  } catch { /* 日志写入失败不影响主流程 */ }
+  console.log(...args);
+}
 
 const ACTOR_ID = 'nfp1fpt5gUlBwPcor';  // Twitter Scraper Unlimited
-const DEFAULT_APIFY_TOKEN = 'apify_api_vsVgnrJKGDCfhfTil8FpBaMaM4vexW1TZocw';
 
 // 指数退避轮询配置（v1.4.0 优化：固定间隔 → 指数退避）
 // 初始 500ms，每次增加 1.5 倍，最大 3000ms
@@ -218,6 +249,56 @@ async function fetchDataset(token, datasetId) {
 // ─────────────────────────────────────────────
 // 数据转换
 // ─────────────────────────────────────────────
+
+/**
+ * 从推文数据中提取图片 URL。
+ * Apify Actor 输出格式可能随版本变化，需兼容多种字段位置：
+ *   - tweet.media（字符串数组 或 对象数组 {url/media_url_https}）
+ *   - tweet.photos（字符串数组 或 对象数组）
+ *   - tweet.extendedEntities.media / tweet.extended_entities.media
+ *   - tweet.entities.media
+ * 统一过滤视频，只保留静态图片。
+ */
+function extractImageUrls(tweet) {
+  const isVideoUrl = (u) => typeof u === 'string' && u.includes('video.twimg.com');
+
+  const extractFromMediaArray = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    const urls = [];
+    for (const item of arr) {
+      if (typeof item === 'string') {
+        if (!isVideoUrl(item)) urls.push(item);
+      } else if (item && typeof item === 'object') {
+        if (item.type === 'video' || item.type === 'animated_gif') continue;
+        const url = item.media_url_https || item.media_url || item.url || item.src || '';
+        if (url && !isVideoUrl(url)) urls.push(url);
+      }
+    }
+    return urls;
+  };
+
+  // 按优先级尝试各字段
+  const sources = [
+    tweet.media,
+    tweet.photos,
+    tweet.images,
+    tweet.extendedEntities?.media,
+    tweet.extended_entities?.media,
+    tweet.entities?.media,
+  ];
+
+  for (const src of sources) {
+    const urls = extractFromMediaArray(src);
+    if (urls.length > 0) {
+      debug(`🔍 图片提取命中字段 — 数量: ${urls.length}`);
+      return urls;
+    }
+  }
+
+  debug(`🔍 未找到图片字段 — tweet keys: ${Object.keys(tweet).join(', ')}`);
+  return [];
+}
+
 function transformTweetToYnoteData(tweet, sourceUrl) {
   if (!tweet) {
     throw new Error('推文数据为空');
@@ -229,10 +310,7 @@ function transformTweetToYnoteData(tweet, sourceUrl) {
   // 提取标题（使用前 50 个字符）
   const title = (text.substring(0, 50) + (text.length > 50 ? '...' : '')).replace(/\n/g, ' ');
 
-  // 提取图片 URL（tweet.media 是 URL 字符串数组，过滤掉视频）
-  const imageUrls = Array.isArray(tweet.media)
-    ? tweet.media.filter(u => typeof u === 'string' && !u.includes('video.twimg.com'))
-    : [];
+  const imageUrls = extractImageUrls(tweet);
 
   // 构建 HTML 内容（富文本转换）
   const content = buildHtmlContent(tweet, text, imageUrls);
@@ -331,10 +409,15 @@ function escapeHtml(str) {
 
 async function main() {
   const args = parseArgs();
-  const token = process.env.APIFY_API_TOKEN || DEFAULT_APIFY_TOKEN;
+  const token = process.env.APIFY_API_TOKEN?.trim() || '';
 
   if (!args.url) {
     console.error('错误：缺少 --url 参数');
+    process.exit(1);
+  }
+
+  if (!token) {
+    console.error('错误：未设置 APIFY_API_TOKEN。请在 OpenClaw config 的 youdaonote-clip.env 中配置，或在 shell 中 export APIFY_API_TOKEN（可在 apify.com 获取 Token）。');
     process.exit(1);
   }
 
@@ -345,6 +428,9 @@ async function main() {
   }
 
   try {
+    currentDebugKey = DEBUG ? generateDebugKey() : null;
+    debug('🔍 路径: A (twitter-apify)');
+
     let ynoteData;
 
     // Step 0: 检查缓存（C1 优化：避免重复调用 Apify）
@@ -370,6 +456,10 @@ async function main() {
 
       // Step 4: 转换数据
       const tweet = items[0];
+      debug(`🔍 RAW TWEET KEYS: ${Object.keys(tweet || {}).join(', ')}`);
+      if (tweet?.noResults) {
+        throw new Error('Apify Actor 无法抓取该推文（noResults）：X.com 可能要求登录验证，请配置 APIFY_TWITTER_COOKIE 环境变量');
+      }
       ynoteData = transformTweetToYnoteData(tweet, args.url);
 
       // Step 4.5: 写入缓存
@@ -377,7 +467,9 @@ async function main() {
       debug(`🔍 已缓存 Twitter 结果`);
     }
 
-    // Step 5: 写入文件
+    // Step 5: 写入文件（含 _debugKey、_source 供 clip-note 串联日志与路径标识）
+    ynoteData._source = 'twitter';
+    if (currentDebugKey) ynoteData._debugKey = currentDebugKey;
     fs.writeFileSync(args.output, JSON.stringify(ynoteData, null, 2));
     debug(`🔍 已写入: ${args.output}`);
 

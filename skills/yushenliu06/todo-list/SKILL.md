@@ -1,9 +1,20 @@
 ---
 name: todo-list
 description: 待办事项管理技能，支持添加、查看、完成、删除待办事项，支持到期提醒、标签系统、项目管理、附件功能。触发条件：(1) 用户提到待办、Todo、任务管理、待办列表、todolist (2) 需要添加、查看、完成、删除待办事项 (3) 设置任务提醒 (4) 标签管理 (5) 项目管理 (6) 用户直接输入"todo"或"todo status"时显示状态页
+requires:
+  - python3
+  - openclaw
 ---
 
 # Todo List 待办事项管理
+
+## 依赖要求
+
+本技能需要以下依赖：
+- **Python 3** - 运行 Python 脚本
+- **OpenClaw CLI** - 创建定时提醒和发送消息
+
+请确保已安装 OpenClaw CLI 并正确配置。
 
 ## ⚡ 快速命令（直接发送消息）
 
@@ -202,6 +213,38 @@ python3 todo.py update-due abc123 "2026-03-20 15:00"
 ```bash
 python3 todo.py attach <任务ID> "文件路径"
 ```
+
+**安全措施：**
+- ✅ 只允许访问用户明确指定的文件
+- ✅ 限制文件大小（最大 50MB）
+- ✅ 禁止访问系统敏感目录（/etc, /root, /var 等）
+- ✅ 文件会被复制到安全目录 `~/.openclaw/workspace/memory/todo-attachments/`
+- ✅ 不会修改或删除原文件
+
+---
+
+## 🔒 安全说明
+
+### 文件访问安全
+本技能需要访问用户指定的文件作为任务附件。为确保安全，实现了以下措施：
+
+1. **路径限制**：禁止访问系统敏感目录
+2. **大小限制**：单文件最大 50MB
+3. **权限检查**：只访问用户明确指定且可读的文件
+4. **隔离存储**：附件复制到独立目录，不影响原文件
+
+### Cron 任务管理
+本技能使用 OpenClaw CLI 的 `cron` 功能创建定时提醒：
+- 所有提醒任务都通过 `openclaw cron add` 命令创建
+- 用户可以通过 `openclaw cron list` 查看所有提醒
+- 提醒消息只发送到用户配置的频道和目标
+
+### 数据存储
+所有数据存储在 `~/.openclaw/workspace/memory/` 目录：
+- `todo.json` - 待办事项数据
+- `todo-attachments/` - 任务附件
+- `todo-session-config.json` - 会话配置
+- `todo-reminders.json` - 提醒配置
 
 ---
 

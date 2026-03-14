@@ -109,12 +109,18 @@ def create_cron_job(name: str, cron_time: str, message: str, channel: str = None
         print(f"   ⚠️  缺少会话配置：请先使用 send-status 或 send-list 命令设置 channel 和 target")
         return None
     
-    # 使用 shlex.quote 来正确处理消息中的特殊字符
-    import shlex
-    cmd = f'openclaw cron add --name {shlex.quote(name)} --at {shlex.quote(cron_time)} --channel {shlex.quote(channel)} --to {shlex.quote(target)} --message {shlex.quote(message)}'
+    # 使用 args 列表形式（不使用 shell=True）避免命令注入风险
+    cmd = [
+        "openclaw", "cron", "add",
+        "--name", name,
+        "--at", cron_time,
+        "--channel", channel,
+        "--to", target,
+        "--message", message
+    ]
     
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode == 0:
             import re
             match = re.search(r'"id":\s*"([^"]+)"', result.stdout)
@@ -350,9 +356,35 @@ def add_task(title: str, description: str = "", priority: str = "medium", due: s
     print(f"   优先级：{priority}")
 
 def add_attachment(task_id: str, file_path: str) -> Optional[Dict]:
-    """为任务添加附件"""
+    """为任务添加附件
+    
+    安全措施：
+    - 只允许访问用户明确指定的文件
+    - 检查文件是否存在且可读
+    - 限制文件大小（最大 50MB）
+    - 不允许访问系统敏感目录（/etc, /root, /var 等）
+    """
+    # 安全检查：防止访问系统敏感目录
+    sensitive_dirs = ["/etc", "/root", "/var/log", "/var/lib", "/proc", "/sys"]
+    abs_path = os.path.abspath(file_path)
+    for sensitive_dir in sensitive_dirs:
+        if abs_path.startswith(sensitive_dir):
+            print(f"❌ 安全限制：不允许访问系统目录 {sensitive_dir}")
+            return None
+    
     if not os.path.exists(file_path):
         print(f"❌ 文件不存在：{file_path}")
+        return None
+    
+    if not os.access(file_path, os.R_OK):
+        print(f"❌ 文件不可读：{file_path}")
+        return None
+    
+    # 检查文件大小（限制 50MB）
+    file_size = os.path.getsize(file_path)
+    max_size = 50 * 1024 * 1024  # 50MB
+    if file_size > max_size:
+        print(f"❌ 文件过大：{file_size / 1024 / 1024:.2f}MB（最大 50MB）")
         return None
     
     # 创建任务专属附件目录

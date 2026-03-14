@@ -3,9 +3,15 @@
   "slug": "xhs-auto-reply",
   "displayName": "Xhs Auto Reply",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1773521369835,
-    "commit": "https://github.com/openclaw/skills/commit/1f260dc58f3d949ae30d6339879d238b238f82d4"
+    "version": "2.1.0",
+    "publishedAt": 1773521811299,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1773521369835,
+      "commit": "https://github.com/openclaw/skills/commit/1f260dc58f3d949ae30d6339879d238b238f82d4"
+    }
+  ]
 }

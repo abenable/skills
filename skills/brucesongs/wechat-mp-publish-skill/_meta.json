@@ -1,0 +1,11 @@
+{
+  "owner": "brucesongs",
+  "slug": "wechat-mp-publish-skill",
+  "displayName": "微信公众号发布工具",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1773318828383,
+    "commit": null
+  },
+  "history": []
+}

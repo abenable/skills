@@ -1,0 +1,11 @@
+{
+  "owner": "bigbubbaagent-bot",
+  "slug": "miro-cli",
+  "displayName": "Miro CLI",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1773502922958,
+    "commit": null
+  },
+  "history": []
+}

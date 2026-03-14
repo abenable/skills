@@ -39,7 +39,7 @@ cmd_generate() {
         echo "错误: 请提供描述，例如: bash cron.sh generate \"每天凌晨3点\""
         exit 1
     fi
-    python3 << 'PYEOF'
+    python3 - "$desc" << 'PYEOF'
 import sys
 import re
 
@@ -111,7 +111,7 @@ cmd_explain() {
         echo "错误: 请提供cron表达式，例如: bash cron.sh explain \"0 3 * * *\""
         exit 1
     fi
-    python3 << 'PYEOF' "$expr"
+    python3 - "$expr" << 'PYEOF'
 import sys
 
 expr = sys.argv[1]
@@ -237,7 +237,7 @@ cmd_validate() {
         echo "错误: 请提供cron表达式，例如: bash cron.sh validate \"0 3 * * *\""
         exit 1
     fi
-    python3 << 'PYEOF' "$expr"
+    python3 - "$expr" << 'PYEOF'
 import sys
 import re
 
@@ -297,7 +297,7 @@ cmd_next() {
         echo "错误: 请提供cron表达式，例如: bash cron.sh next \"0 3 * * *\" 5"
         exit 1
     fi
-    python3 << 'PYEOF' "$expr" "$count"
+    python3 - "$expr" "$count" << 'PYEOF'
 import sys
 import datetime
 import re
@@ -402,7 +402,7 @@ cmd_convert() {
         echo "平台: linux, aws, github"
         exit 1
     fi
-    python3 << 'PYEOF' "$expr" "$platform"
+    python3 - "$expr" "$platform" << 'PYEOF'
 import sys
 
 expr = sys.argv[1]

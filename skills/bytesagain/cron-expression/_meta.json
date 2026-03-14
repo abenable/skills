@@ -1,11 +1,17 @@
 {
   "owner": "bytesagain",
   "slug": "cron-expression",
-  "displayName": "cron-expression",
+  "displayName": "Cron Expression",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773253033058,
-    "commit": "https://github.com/openclaw/skills/commit/a4337eb71ca368d44620f41d3c035af1d2a2cea3"
+    "version": "2.3.0",
+    "publishedAt": 1773446827535,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773253033058,
+      "commit": "https://github.com/openclaw/skills/commit/a4337eb71ca368d44620f41d3c035af1d2a2cea3"
+    }
+  ]
 }

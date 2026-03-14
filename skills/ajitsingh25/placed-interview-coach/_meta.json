@@ -3,9 +3,15 @@
   "slug": "placed-interview-coach",
   "displayName": "Placed Interview Coach",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773496381182,
-    "commit": "https://github.com/openclaw/skills/commit/1b898195180a6c2d460af97ed1c5a6a4593aeb25"
+    "version": "1.0.2",
+    "publishedAt": 1773499907222,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773496381182,
+      "commit": "https://github.com/openclaw/skills/commit/1b898195180a6c2d460af97ed1c5a6a4593aeb25"
+    }
+  ]
 }

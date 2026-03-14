@@ -1,0 +1,11 @@
+{
+  "owner": "agistack",
+  "slug": "terminal",
+  "displayName": "Terminal",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773302260350,
+    "commit": null
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "peterkouss",
+  "slug": "arxiv-master-search",
+  "displayName": "arXiv Master Search",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773304992317,
+    "commit": null
+  },
+  "history": []
+}

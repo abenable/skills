@@ -3,9 +3,15 @@
   "slug": "nano-gpt-cli",
   "displayName": "Nano Gpt",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1773254878468,
-    "commit": "https://github.com/openclaw/skills/commit/b7c44deba7f994105e8645361f5b175d18a98c43"
+    "version": "0.1.2",
+    "publishedAt": 1773260510498,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1773254878468,
+      "commit": "https://github.com/openclaw/skills/commit/b7c44deba7f994105e8645361f5b175d18a98c43"
+    }
+  ]
 }

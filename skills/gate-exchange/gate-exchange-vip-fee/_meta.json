@@ -1,0 +1,11 @@
+{
+  "owner": "gate-exchange",
+  "slug": "gate-exchange-vip-fee",
+  "displayName": "Gate Exchange VIP Fee",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773490944206,
+    "commit": null
+  },
+  "history": []
+}

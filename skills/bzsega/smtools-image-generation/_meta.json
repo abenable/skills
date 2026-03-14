@@ -1,0 +1,11 @@
+{
+  "owner": "bzsega",
+  "slug": "smtools-image-generation",
+  "displayName": "SMTools Image Generation Skill",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1773521081033,
+    "commit": null
+  },
+  "history": []
+}

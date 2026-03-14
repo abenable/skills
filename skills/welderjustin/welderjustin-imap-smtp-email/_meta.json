@@ -1,0 +1,11 @@
+{
+  "owner": "welderjustin",
+  "slug": "welderjustin-imap-smtp-email",
+  "displayName": "IMAP SMTP Email",
+  "latest": {
+    "version": "0.0.11",
+    "publishedAt": 1773514956610,
+    "commit": null
+  },
+  "history": []
+}

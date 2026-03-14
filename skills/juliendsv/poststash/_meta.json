@@ -1,0 +1,11 @@
+{
+  "owner": "juliendsv",
+  "slug": "poststash",
+  "displayName": "Schedule and publish posts to X and Threads from your AI agent",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773311207999,
+    "commit": null
+  },
+  "history": []
+}

@@ -3,9 +3,15 @@
   "slug": "agent-bom-runtime",
   "displayName": "agent-bom runtime",
   "latest": {
-    "version": "0.70.7",
-    "publishedAt": 1773429284762,
-    "commit": "https://github.com/openclaw/skills/commit/996ba25f324abdde6e8d09901beae4101ad0c9f9"
+    "version": "0.70.8",
+    "publishedAt": 1773482499165,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.70.7",
+      "publishedAt": 1773429284762,
+      "commit": "https://github.com/openclaw/skills/commit/996ba25f324abdde6e8d09901beae4101ad0c9f9"
+    }
+  ]
 }

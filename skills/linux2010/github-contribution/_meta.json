@@ -3,11 +3,16 @@
   "slug": "github-contribution",
   "displayName": "GitHub Contribution",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1772547347661,
-    "commit": "https://github.com/openclaw/skills/commit/3a3abf10275c55c86e00ee24aa351fa4b69b89fb"
+    "version": "1.1.0",
+    "publishedAt": 1773473213935,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1772547347661,
+      "commit": "https://github.com/openclaw/skills/commit/3a3abf10275c55c86e00ee24aa351fa4b69b89fb"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772432462845,

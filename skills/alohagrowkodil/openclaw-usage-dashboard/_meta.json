@@ -3,9 +3,15 @@
   "slug": "openclaw-usage-dashboard",
   "displayName": "OpenClaw Usage Dashboard",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773404076752,
-    "commit": "https://github.com/openclaw/skills/commit/4a3e60b9c30aa86d646fc73a33596b6fcec05af2"
+    "version": "1.0.1",
+    "publishedAt": 1773405061815,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773404076752,
+      "commit": "https://github.com/openclaw/skills/commit/4a3e60b9c30aa86d646fc73a33596b6fcec05af2"
+    }
+  ]
 }

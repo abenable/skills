@@ -1,6 +1,6 @@
 ---
 name: Debate Helper
-description: >-
+description: "Debate Helper. Use when you need debate helper capabilities. Triggers on: debate helper."
   辩论助手。论点构建、反驳策略、辩论结构、论据搜集、评判标准。Debate helper with arguments, rebuttals, structure. 辩论、论点、思辨。
 ---
 # Debate Helper
@@ -27,3 +27,6 @@ description: >-
 
 ---
 *Debate Helper by BytesAgain*
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com

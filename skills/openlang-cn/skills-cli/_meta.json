@@ -1,0 +1,11 @@
+{
+  "owner": "openlang-cn",
+  "slug": "skills-cli",
+  "displayName": "Skills Cli",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1773307466806,
+    "commit": null
+  },
+  "history": []
+}

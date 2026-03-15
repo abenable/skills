@@ -1,0 +1,11 @@
+{
+  "owner": "bytesagain3",
+  "slug": "procmon",
+  "displayName": "Procmon",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773579919342,
+    "commit": "https://github.com/openclaw/skills/commit/4241071726cada9fa8001842fc0b264e239eb9c1"
+  },
+  "history": []
+}

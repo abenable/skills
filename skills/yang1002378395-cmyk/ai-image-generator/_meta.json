@@ -1,0 +1,11 @@
+{
+  "owner": "yang1002378395-cmyk",
+  "slug": "ai-image-generator",
+  "displayName": "Ai Image Generator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773593636224,
+    "commit": "https://github.com/openclaw/skills/commit/6dd1fe6a626d9626fc74be1ff3ca479ef21fba0e"
+  },
+  "history": []
+}

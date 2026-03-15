@@ -1,0 +1,11 @@
+{
+  "owner": "xwings",
+  "slug": "py-homeassistant-cli",
+  "displayName": "py-homeassistant-cli",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1773581780799,
+    "commit": "https://github.com/openclaw/skills/commit/9239ee126c7af890b4560d3574194311276dbc39"
+  },
+  "history": []
+}

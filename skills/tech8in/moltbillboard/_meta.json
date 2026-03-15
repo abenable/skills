@@ -3,11 +3,16 @@
   "slug": "moltbillboard",
   "displayName": "MoltBillboard",
   "latest": {
-    "version": "1.6.1",
-    "publishedAt": 1773535395147,
-    "commit": "https://github.com/openclaw/skills/commit/736f46ea21b774dfcb9ede5fc22259921071f425"
+    "version": "1.6.2",
+    "publishedAt": 1773578673658,
+    "commit": "https://github.com/openclaw/skills/commit/40426a9685f36a708186908040cf21856eac5e83"
   },
   "history": [
+    {
+      "version": "1.6.1",
+      "publishedAt": 1773535395147,
+      "commit": "https://github.com/openclaw/skills/commit/736f46ea21b774dfcb9ede5fc22259921071f425"
+    },
     {
       "version": "1.4.1",
       "publishedAt": 1773258432757,

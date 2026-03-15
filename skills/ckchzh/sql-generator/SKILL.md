@@ -1,6 +1,6 @@
 ---
 name: SQL Generator
-description: >-
+description: "📊 SQL生成器 — sql.sh. Use when you need sql generator capabilities. Triggers on: sql generator."
   SQL生成器。自然语言转SQL、SQL解释、性能优化、建表语句、测试数据生成、数据库迁移、SQL速查表。SQL generator from natural language, explainer, optimizer, DDL creator, mock data, migration scripts, cheatsheet. SQL、数据库、MySQL。
 ---
 # SQL Generator
@@ -25,7 +25,6 @@ A: 主要输出Markdown格式，方便复制和编辑。
 - **migrate** — migrate
 - **cheatsheet** — cheatsheet
 
-
 ## 专业建议
 
 - SELECT/WHERE/ORDER BY
@@ -36,3 +35,20 @@ A: 主要输出Markdown格式，方便复制和编辑。
 
 ---
 *SQL Generator by BytesAgain*
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
+
+## Examples
+
+```bash
+# Show help
+sql-generator help
+
+# Run
+sql-generator run
+```
+
+## Commands
+
+Run `sql-generator help` to see all available commands.

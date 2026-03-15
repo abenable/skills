@@ -1,13 +1,18 @@
 {
   "owner": "adlai88",
   "slug": "polymarket-ai-divergence",
-  "displayName": "Polymarket Ai Divergence",
+  "displayName": "Polymarket AI Divergence",
   "latest": {
-    "version": "2.1.1",
-    "publishedAt": 1773328402988,
-    "commit": "https://github.com/openclaw/skills/commit/988d5eae52cc821c7f417a9b42f52ff2ad876296"
+    "version": "2.2.0",
+    "publishedAt": 1773561265107,
+    "commit": "https://github.com/openclaw/skills/commit/65ca45d877e159ea7f750f1358263dc2b78a0dd7"
   },
   "history": [
+    {
+      "version": "2.1.1",
+      "publishedAt": 1773328402988,
+      "commit": "https://github.com/openclaw/skills/commit/988d5eae52cc821c7f417a9b42f52ff2ad876296"
+    },
     {
       "version": "2.1.0",
       "publishedAt": 1772717246947,

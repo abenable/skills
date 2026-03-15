@@ -41,16 +41,24 @@ font preview <font>
 font pair <font>
 ```
 
-## How It Works
-
-Reads your input, processes with built-in logic, and outputs structured results. All data stays local — no external API calls unless you configure them.
-
-## Tips
-
 - Run `font help` for all available commands
-- Data stored locally in your workspace
-- No API keys required for basic features
-- Works offline
 
 ---
 *Powered by BytesAgain | bytesagain.com*
+
+## Configuration
+
+Set `FONT_DIR` to change data directory. Default: `~/.local/share/font/`
+
+## When to Use
+
+- Quick font tasks from terminal
+- Automation pipelines
+
+## Output
+
+Results go to stdout. Save with `font run > output.txt`.
+
+## Configuration
+
+Set `FONT_DIR` to change data directory. Default: `~/.local/share/font/`

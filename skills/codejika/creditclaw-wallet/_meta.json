@@ -3,11 +3,16 @@
   "slug": "creditclaw-wallet",
   "displayName": "CreditClaw | Give your agent a wallet or credit card",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1773199452441,
-    "commit": "https://github.com/openclaw/skills/commit/7c6abc98f5338ed2179d26718b25cd1732b5e007"
+    "version": "2.1.4",
+    "publishedAt": 1773467326074,
+    "commit": "https://github.com/openclaw/skills/commit/6a15631649d25b5fb5cb1a2461a47cbb126351cc"
   },
   "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1773199452441,
+      "commit": "https://github.com/openclaw/skills/commit/7c6abc98f5338ed2179d26718b25cd1732b5e007"
+    },
     {
       "version": "2.0.4",
       "publishedAt": 1771039906136,

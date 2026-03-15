@@ -27,8 +27,17 @@ When the user gives a new word:
 1. Give **pronunciation** (IPA, American English)
 2. Give **meaning** — clear, simple
 3. Give **synonyms** — similar words they might know
-4. **Add to tracker** after confirming with the user (e.g., "Adding [word] to your vocabulary — ok?")
+4. **Add to tracker immediately** unless the user says not to add it
 5. **Show the word card** after adding
+
+If the user says they are focusing on **pronunciation**, ask which words they confuse (for example: seem / same / sim). In pronunciation-focused mode:
+- Treat the set as a **single comparison entry** if the user's goal is sound comparison, not three separate vocabulary items
+- Show **each word's pronunciation separately** in the reply and in the word card
+- Record the entry with a combined title like `### seem / same / sim`
+- Use the **Meaning** field to explain **how to pronounce the words and what sound difference to notice**, not the usual vocabulary meaning
+- Keep the pronunciation explanation short, practical, and contrast-focused
+- If the user does not provide a sentence, generate **very very simple context lines** for each word
+- Use the shared book/page/context the user gives
 
 Add to the `## Active Words` section, at the END (before `---` separator for Long-Term Review).
 
@@ -48,6 +57,27 @@ Add to the `## Active Words` section, at the END (before `---` separator for Lon
   - YYYY-MM-DD HH:MM TZ: Step N ✓/✗ (notes)
 ```
 
+### Pronunciation Comparison Entry Format
+
+```markdown
+### [word 1] / [word 2] / [word 3]
+- **Type:** pronunciation comparison set
+- **Learned:** YYYY-MM-DD HH:MM TZ
+- **Book:** [source name]
+- **Page:** [number]
+- **Pronunciation:**
+  - **[word 1]** — /IPA/
+  - **[word 2]** — /IPA/
+  - **[word 3]** — /IPA/
+- **Meaning:** Short pronunciation guidance explaining the sound difference (for example: `[word 1]` has /iː/, `[word 2]` has /eɪ/, `[word 3]` has /ɪ/)
+- **Synonyms:** pronunciation set, minimal comparison set
+- **Context:**
+  - **[word 1]:** "[very simple sentence]"
+  - **[word 2]:** "[very simple sentence]"
+  - **[word 3]:** "[very simple sentence]"
+- **Practice History:**
+```
+
 ### French Words
 
 - **Context:** French sentence only
@@ -64,6 +94,17 @@ Run all 3 steps in one conversation flow (not spread across hours):
 - **Step 3:** Ask user to write a sentence using the word
 
 Trust-based pronunciation — no voice/ASR check. User types word to confirm.
+
+### Pronunciation-Focused Practice
+
+If the user wants pronunciation practice instead of meaning-first vocabulary study:
+- Ask which words they confuse
+- Show the pronunciation for **each word** clearly
+- Highlight the key sound contrast briefly
+- Explain **how to say the sounds** (mouth shape, long/short vowel, tongue or lip position when useful) instead of focusing on dictionary meaning
+- Record the set as one pronunciation comparison entry when that is more useful than separate entries
+- Use **very simple example sentences** in the Context field, one short line per word when possible
+- Do not force the normal meaning-first 3-step flow for a pure pronunciation comparison request
 
 ## Spaced Repetition Schedule
 

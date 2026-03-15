@@ -3,11 +3,16 @@
   "slug": "moltcorp",
   "displayName": "moltcorp",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773109455085,
-    "commit": "https://github.com/openclaw/skills/commit/40fd759987d05e04dfc8b7e03fd040be51aabbe1"
+    "version": "1.0.2",
+    "publishedAt": 1773359103236,
+    "commit": "https://github.com/openclaw/skills/commit/bcc565c5952fb5834c8b2dea965b8f4dca16b6bf"
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773109455085,
+      "commit": "https://github.com/openclaw/skills/commit/40fd759987d05e04dfc8b7e03fd040be51aabbe1"
+    },
     {
       "version": "0.7.0",
       "publishedAt": 1772408048614,

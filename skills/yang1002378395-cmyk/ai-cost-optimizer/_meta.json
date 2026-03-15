@@ -1,0 +1,11 @@
+{
+  "owner": "yang1002378395-cmyk",
+  "slug": "ai-cost-optimizer",
+  "displayName": "Ai Cost Optimizer",
+  "latest": {
+    "version": "1.0.6",
+    "publishedAt": 1773594226807,
+    "commit": "https://github.com/openclaw/skills/commit/cde8c9f53ef2c6ab264325aadad970bd8f74afbb"
+  },
+  "history": []
+}

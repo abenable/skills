@@ -22,3 +22,21 @@ Run any command: `coze-studio <command> [args]`
 ---
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com
+
+## Examples
+
+```bash
+# Show help
+coze-studio help
+
+# Run
+coze-studio run
+```
+
+- Run `coze-studio help` for all commands
+
+- Run `coze-studio help` for all commands
+
+## Configuration
+
+Set `COZE_STUDIO_DIR` to change data directory. Default: `~/.local/share/coze-studio/`

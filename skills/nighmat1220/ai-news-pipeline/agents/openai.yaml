@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI News Intelligence Pipeline"
+  short_description: "Collect AI news, generate cumulative reports, and build briefs"
+  default_prompt: "Use $ai-news-pipeline to run the bundled workflow scripts in the current workspace and generate the AI news outputs."

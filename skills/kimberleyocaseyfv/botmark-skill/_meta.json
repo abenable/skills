@@ -1,0 +1,11 @@
+{
+  "owner": "kimberleyocaseyfv",
+  "slug": "botmark-skill",
+  "displayName": "BotMark Self-Evaluation",
+  "latest": {
+    "version": "1.5.0",
+    "publishedAt": 1773585259484,
+    "commit": "https://github.com/openclaw/skills/commit/aa69f8ffa437effb2beb59370c2959eb858e7561"
+  },
+  "history": []
+}

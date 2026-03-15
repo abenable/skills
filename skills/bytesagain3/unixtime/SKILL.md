@@ -24,12 +24,8 @@ unixtime ago 1700000000
 ---
 Powered by BytesAgain | bytesagain.com
 
-## How It Works
-
-Reads input, processes with built-in logic, outputs results. All data stays local.
-
-## Tips
-
 - Run `unixtime help` for all commands
-- No API keys required
-- Works offline
+
+## Output
+
+Results go to stdout. Save with `unixtime run > output.txt`.

@@ -1,11 +1,17 @@
 ---
 name: karakeep
-description: Karakeep bookmark manager with full API support including notes, updates, and deletion. Requires KARAKEEP_SERVER_URL and KARAKEEP_API_KEY environment variables.
+description: Karakeep bookmark manager with full native RESTful API support including notes, updates, and deletion.
 ---
 
 # Karakeep Skill
 
 Advanced Karakeep bookmark management with full REST API support.
+
+Add KARAKEEP_SERVER_URL and KARAKEEP_API_KEY to environment variables and `jq` for pretty-printing JSON responses.
+
+If they are missing, provied a clear guide to the user.
+
+IMPORTANT:always ask user to confirm beefore you delete a bookmark,
 
 ## Complete Function Reference
 

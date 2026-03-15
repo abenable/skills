@@ -92,22 +92,49 @@ Your overlay file **merges** with defaults:
 
 No need to copy the entire file — just include what you want to change.
 
-## 🔧 Optional Setup
+## 🔧 Environment Variables
 
 All environment variables are optional. The pipeline runs with whatever sources are available.
 
 ```bash
-export TWITTERAPI_IO_KEY="..."  # twitterapi.io (~$5/mo) — enables Twitter layer
-export X_BEARER_TOKEN="..."     # Twitter/X official API — alternative Twitter backend
-export TAVILY_API_KEY="tvly-xxx"  # Tavily Search API (alternative, free 1000/mo)
-export BRAVE_API_KEYS="k1,k2,k3" # Brave Search API keys (comma-separated, rotation)
-export BRAVE_API_KEY="..."       # Fallback: single Brave key
-export GITHUB_TOKEN="..."       # GitHub API — higher rate limits (auto-generated from GitHub App if unset)
-export TWITTER_API_BACKEND="auto" # auto|twitterapiio|official (default: auto)
-export BRAVE_PLAN="free"         # Override Brave rate limit detection: free|pro
-export WEB_SEARCH_BACKEND="auto" # auto|brave|tavily (default: auto)
-pip install weasyprint           # Enables PDF report generation
+# Twitter/X Backend (auto priority: getxapi > twitterapiio > official)
+export GETX_API_KEY="..."        # GetXAPI
+export TWITTERAPI_IO_KEY="..."   # twitterapi.io
+export X_BEARER_TOKEN="..."      # Official X API v2
+export TWITTER_API_BACKEND="auto"  # auto|getxapi|twitterapiio|official
+# Web Search
+export TAVILY_API_KEY="tvly-xxx"   # Tavily Search API
+export BRAVE_API_KEYS="k1,k2,k3"   # Brave Search API keys (comma-separated for rotation)
+export BRAVE_API_KEY="..."         # Single Brave key
+export WEB_SEARCH_BACKEND="auto"   # auto|brave|tavily
+# GitHub
+export GITHUB_TOKEN="..."          # GitHub API
+# Other
+export BRAVE_PLAN="free"           # Override Brave rate limit: free|pro
 ```
+
+## 📦 Dependencies
+
+### Core (required)
+
+The skill requires Python 3.8+ and two optional dependencies for enhanced functionality:
+
+```bash
+pip install -r requirements.txt
+# or
+pip install feedparser>=6.0.0 jsonschema>=4.0.0
+```
+
+- **feedparser** — RSS/Atom feed parsing (fallback to regex if not installed)
+- **jsonschema** — JSON Schema validation for config files
+
+### Optional
+
+```bash
+pip install weasyprint
+```
+
+- **weasyprint** — Enables PDF report generation
 
 ## 📂 Repository
 

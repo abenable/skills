@@ -92,7 +92,7 @@ DOMAIN_SCORES = {
     "digital products":            (4, 4, 5, 4, 5),
     "freelancing":                 (4, 5, 5, 5, 2),
     "agency services":             (3, 3, 4, 3, 4),
-    "affiliate or content revenue":(3, 3, 5, 2, 4),
+    "affiliate or content revenue": (3, 3, 5, 2, 4),
     "hardware products":           (3, 2, 2, 2, 3),
 }
 

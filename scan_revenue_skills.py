@@ -180,7 +180,7 @@ def parse_frontmatter(text):
 # ---------------------------------------------------------------------------
 
 def read_skill(skill_dir):
-    """Return a dict describing one skill, or None if unreadable."""
+    """Return a dict describing one skill."""
     skill_md = os.path.join(skill_dir, "SKILL.md")
     meta_json = os.path.join(skill_dir, "_meta.json")
 
@@ -364,26 +364,25 @@ def scan_skills(skills_root):
 # ---------------------------------------------------------------------------
 
 def format_skill(skill):
-    """Return a formatted string block for one skill."""
+    """Return a formatted markdown block for one skill."""
     lines = []
-    lines.append(f"Skill: {skill['name']}")
-    lines.append(f"  Owner: {skill['owner']}")
-    lines.append(f"  Path: {skill['path']}")
+    lines.append(f"**Skill:** {skill['name']}")
+    lines.append(f"- **Owner:** {skill['owner']}")
+    lines.append(f"- **Path:** `{skill['path']}`")
     if skill["description"]:
         desc = skill["description"]
         if len(desc) > 200:
             desc = desc[:197] + "..."
-        lines.append(f"  Description: {desc}")
+        lines.append(f"- **Description:** {desc}")
     if skill["version"]:
-        lines.append(f"  Version: {skill['version']}")
-    lines.append(f"  Skill level: {skill['level']}")
-    lines.append(f"  Domains: {', '.join(skill['domains'])}")
-    lines.append("  Revenue scores:")
-    for label, value in skill["scores"].items():
-        lines.append(f"    {label}: {value}/5")
-    lines.append(f"  Monetization paths: {', '.join(skill['monetization_paths'])}")
+        lines.append(f"- **Version:** {skill['version']}")
+    lines.append(f"- **Skill level:** {skill['level']}")
+    lines.append(f"- **Domains:** {', '.join(skill['domains'])}")
+    scores_str = " | ".join(f"{label}: {value}/5" for label, value in skill["scores"].items())
+    lines.append(f"- **Revenue scores:** {scores_str}")
+    lines.append(f"- **Monetization paths:** {', '.join(skill['monetization_paths'])}")
     if skill["trading_categories"]:
-        lines.append(f"  Trading categories: {', '.join(skill['trading_categories'])}")
+        lines.append(f"- **Trading categories:** {', '.join(skill['trading_categories'])}")
     return "\n".join(lines)
 
 

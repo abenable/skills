@@ -3,9 +3,15 @@
   "slug": "sleep-tracker",
   "displayName": "Sleep Tracker",
   "latest": {
-    "version": "2.3.0",
-    "publishedAt": 1773447678308,
-    "commit": "https://github.com/openclaw/skills/commit/3c4a210437404b0a372b9cc629ec81284290c47a"
+    "version": "1.0.1",
+    "publishedAt": 1773539232979,
+    "commit": "https://github.com/openclaw/skills/commit/e88560c22015bf1a34708b9c06d09ee17c4c7c23"
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.3.0",
+      "publishedAt": 1773447678308,
+      "commit": "https://github.com/openclaw/skills/commit/3c4a210437404b0a372b9cc629ec81284290c47a"
+    }
+  ]
 }

@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import ssl
+import stat
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -28,6 +30,7 @@ DEFAULT_STATE_PATH = Path("~/.c2c/active_event.json").expanduser()
 DEFAULT_CREDENTIALS_PATH = Path("~/.c2c/credentials.json").expanduser()
 DEFAULT_RENEW_WITHIN_MINUTES = 12
 DEFAULT_RENEW_DURATION_MINUTES = 60
+DEFAULT_OUTREACH_MODE = "suggest_only"
 REQUEST_TIMEOUT_SEC = 20
 
 
@@ -35,16 +38,36 @@ REQUEST_TIMEOUT_SEC = 20
 class ActiveEventState:
     event_id: str
     expires_at: int
+    checked_in_at: str | None = None
+    event_goal: str | None = None
+    intro_constraints: str | None = None
+    outreach_mode: str | None = None
 
     @classmethod
     def from_json(cls, payload: dict[str, Any]) -> "ActiveEventState":
         return cls(
             event_id=payload["eventId"],
             expires_at=int(payload["expiresAt"]),
+            checked_in_at=payload.get("checkedInAt"),
+            event_goal=payload.get("eventGoal"),
+            intro_constraints=payload.get("introConstraints"),
+            outreach_mode=payload.get("outreachMode"),
         )
 
     def to_json(self) -> dict[str, Any]:
-        return {"eventId": self.event_id, "expiresAt": self.expires_at}
+        payload: dict[str, Any] = {
+            "eventId": self.event_id,
+            "expiresAt": self.expires_at,
+        }
+        if self.checked_in_at:
+            payload["checkedInAt"] = self.checked_in_at
+        if self.event_goal:
+            payload["eventGoal"] = self.event_goal
+        if self.intro_constraints:
+            payload["introConstraints"] = self.intro_constraints
+        if self.outreach_mode:
+            payload["outreachMode"] = self.outreach_mode
+        return payload
 
 
 def parse_args() -> argparse.Namespace:
@@ -85,7 +108,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--propose",
         action="store_true",
-        help="Auto-propose intros from strong suggestions.",
+        help="Auto-propose intros from strong suggestions, but only when the active check-in outreachMode is propose_for_me.",
     )
     parser.add_argument(
         "--propose-threshold",
@@ -135,6 +158,12 @@ def safe_read_state(path: Path) -> ActiveEventState | None:
 def load_api_key(path: Path) -> str:
     if not path.exists():
         raise RuntimeError(f"Missing credentials file at {path}")
+    if os.name != "nt":
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if mode & 0o077:
+            raise RuntimeError(
+                f"Insecure permissions on {path}. Run: chmod 600 {path}"
+            )
 
     payload = read_json(path)
     if isinstance(payload, str):
@@ -291,7 +320,15 @@ def run() -> None:
         return
 
     active_expires_ms = int(my_checkin.get("expiresAt", 0))
-    write_json(state_path, {"eventId": state.event_id, "expiresAt": active_expires_ms, "checkedInAt": event_data.get("checkedInAt", now_ms())})
+    refreshed_state = ActiveEventState(
+        event_id=state.event_id,
+        expires_at=active_expires_ms,
+        checked_in_at=my_checkin.get("checkedInAt") or state.checked_in_at,
+        event_goal=my_checkin.get("eventGoal") or state.event_goal,
+        intro_constraints=my_checkin.get("introConstraints") or state.intro_constraints,
+        outreach_mode=my_checkin.get("outreachMode") or state.outreach_mode,
+    )
+    write_json(state_path, refreshed_state.to_json())
 
     try:
         intro_inbox = list_my_intros(args.api_base, api_key, state.event_id)
@@ -315,8 +352,17 @@ def run() -> None:
     suggested_ids: list[str] = []
     proposals: list[dict[str, Any]] = []
     proposals_made = 0
+    outreach_mode = str(
+        my_checkin.get("outreachMode")
+        or refreshed_state.outreach_mode
+        or DEFAULT_OUTREACH_MODE
+    )
+    auto_propose_enabled = args.propose and outreach_mode == "propose_for_me"
+    auto_propose_skip_reason = None
+    if args.propose and not auto_propose_enabled:
+        auto_propose_skip_reason = f"outreach_mode={outreach_mode}"
 
-    if args.propose:
+    if auto_propose_enabled:
         for candidate in suggestions or []:
             if proposals_made >= args.max_proposals:
                 break
@@ -355,7 +401,8 @@ def run() -> None:
             return
 
         if not args.dry_run and isinstance(renewal, dict) and renewal.get("expiresAt"):
-            write_json(state_path, {"eventId": state.event_id, "expiresAt": int(renewal["expiresAt"])})
+            refreshed_state.expires_at = int(renewal["expiresAt"])
+            write_json(state_path, refreshed_state.to_json())
 
     output({
         "status": "HEARTBEAT_OK",
@@ -364,8 +411,12 @@ def run() -> None:
             "status": event_status,
             "name": event_data.get("name"),
             "myCheckin": {
+                "checkedInAt": refreshed_state.checked_in_at,
                 "expiresAt": active_expires_ms,
+                "eventGoal": refreshed_state.event_goal,
                 "introEnabled": my_checkin.get("introEnabled", False),
+                "introConstraints": refreshed_state.intro_constraints,
+                "outreachMode": outreach_mode,
             },
         },
         "introActions": intro_actions,
@@ -375,10 +426,12 @@ def run() -> None:
             "proposedToAgents": suggested_ids,
             "results": proposals,
             "proposalThreshold": args.propose_threshold,
-            "proposedEnabled": args.propose,
+            "proposedEnabled": auto_propose_enabled,
+            "requestedPropose": args.propose,
+            "skipReason": auto_propose_skip_reason,
         },
         "renewal": renewal,
-        "state": state.to_json(),
+        "state": refreshed_state.to_json(),
         "dryRun": args.dry_run,
     })
 

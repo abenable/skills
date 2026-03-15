@@ -1,0 +1,11 @@
+{
+  "owner": "zhangifonly",
+  "slug": "meituan-bike",
+  "displayName": "Meituan Bike",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773559454407,
+    "commit": "https://github.com/openclaw/skills/commit/7d764cb0f8bc49d7dbe2ddc064457c17a3e92dc2"
+  },
+  "history": []
+}

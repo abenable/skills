@@ -1,6 +1,6 @@
 ---
 name: memoclaw
-version: 1.22.11
+version: 1.23.2
 description: |
   Memory-as-a-Service for AI agents. Store and recall memories with semantic
   vector search. 100 free calls per wallet, then x402 micropayments.
@@ -82,13 +82,15 @@ memoclaw diff <uuid>                                           # show content ch
 memoclaw diff <uuid> --all                                     # show all diffs in sequence (free)
 memoclaw upgrade                                               # check for and install CLI updates
 memoclaw upgrade --check                                       # check only, don't install
+memoclaw alias set myname <uuid>                               # local shortcut for a memory ID (free)
+memoclaw snapshot create --name before-purge                   # local backup before destructive ops (free)
 ```
 
 **Importance cheat sheet:** `0.9+` corrections/critical · `0.7–0.8` preferences · `0.5–0.6` context · `≤0.4` ephemeral
 
 **Memory types:** `correction` (180d) · `preference` (180d) · `decision` (90d) · `project` (30d) · `observation` (14d) · `general` (60d)
 
-**Free commands:** list, get, delete, bulk-delete, purge, search, core, suggested, relations, history, diff, export, import, namespace list, stats, count, browse, config, graph, completions, whoami, status, upgrade, pin, unpin, lock, unlock, edit, copy, move, tags, watch
+**Free commands:** list, get, delete, bulk-delete, purge, search, core, suggested, relations, history, diff, export, import, namespace list, stats, count, browse, config, graph, completions, whoami, status, upgrade, pin, unpin, lock, unlock, edit, copy, move, tags, watch, alias, snapshot create/list/delete
 
 ---
 
@@ -214,13 +216,29 @@ Use these to assign importance consistently:
 | observation | 0.3-0.5 | 14 days |
 | general | 0.4-0.6 | 60 days |
 
+### Which management command?
+
+```
+Need to manage memories?
+├─ Reference a memory often? → memoclaw alias set name <uuid> (FREE, local)
+├─ About to purge or consolidate? → memoclaw snapshot create --name reason (FREE, local)
+├─ Memory should never decay? → memoclaw pin <uuid> (FREE)
+├─ Memory should never be edited? → memoclaw lock <uuid> (FREE)
+├─ Need the same memory in another namespace? → memoclaw copy <uuid> --namespace target (FREE)
+├─ Memory is in the wrong namespace? → memoclaw move <uuid> --namespace target (FREE)
+├─ Duplicate memories piling up? → memoclaw consolidate --dry-run ($0.01)
+└─ Stale memories cluttering results? → memoclaw suggested --category stale (FREE)
+```
+
 ### Session lifecycle
 
-#### Session start
-1. **Load context** (preferred): `memoclaw context "user preferences and recent decisions" --limit 10`
-   — or manually: `memoclaw recall "recent important context" --limit 5`
-2. **Quick essentials** (free): `memoclaw core --limit 5` — returns your highest-importance, foundational memories without using embeddings (or `memoclaw list --sort-by importance --limit 5`)
-3. Use this context to personalize your responses
+#### Session start (cost-efficient pattern)
+1. **Free first** — `memoclaw core --limit 5` — pinned + high-importance memories, no embeddings cost
+2. **Free keyword check** — `memoclaw search "keyword" --since 7d` — recent memories matching known terms
+3. **Paid only if needed** — `memoclaw recall "query" --since 7d --limit 5` ($0.005) — semantic search when free methods aren't enough
+4. **Full context** (rare) — `memoclaw context "user preferences and recent decisions" --limit 10` ($0.01) — LLM-assembled block when starting a complex session
+
+**Tip:** Use `--since 7d` (or `1d`, `1mo`) to limit recall to recent memories — cheaper and more relevant than searching everything.
 
 #### During session
 - Store new facts as they emerge (recall first to avoid duplicates)
@@ -314,6 +332,9 @@ Things that waste calls or degrade recall quality:
 - **Never consolidating** — Memories fragment over time. Run consolidate periodically.
 - **Ignoring decay** — Memories decay naturally. Review stale ones with `memoclaw suggested --category stale`.
 - **Single namespace for everything** — Use namespaces to keep different contexts separate.
+- **Unbounded recall** — Always use `--limit` and consider `--since` to scope queries. Recalling 100 memories when you need 3 wastes tokens.
+- **Paying for free-tier answers** — Check `core` and `search` (free) before reaching for `recall` ($0.005) or `context` ($0.01).
+- **Skipping snapshots before destructive ops** — Always `memoclaw snapshot create` before `consolidate` or `purge`.
 
 ### Example flow
 
@@ -500,6 +521,23 @@ memoclaw upgrade                       # check and prompt to install
 memoclaw upgrade --check               # check only, don't install
 memoclaw upgrade --yes                 # auto-install without prompting
 
+# Aliases — human-readable shortcuts for memory IDs (local, free)
+memoclaw alias set project-ctx <uuid>  # create alias
+memoclaw alias list                    # list all aliases with previews
+memoclaw alias rm project-ctx          # remove alias
+# Use aliases anywhere a memory ID is expected:
+memoclaw get @project-ctx
+memoclaw update @project-ctx --content "updated"
+memoclaw history @project-ctx
+memoclaw diff @project-ctx
+
+# Snapshots — point-in-time namespace backups (local, free to create)
+memoclaw snapshot create               # snapshot default namespace
+memoclaw snapshot create --name before-purge --namespace project1
+memoclaw snapshot list                 # list all snapshots
+memoclaw snapshot restore before-purge # restore (import cost applies)
+memoclaw snapshot delete before-purge  # delete a snapshot
+
 # Shell completions
 memoclaw completions bash >> ~/.bashrc
 memoclaw completions zsh >> ~/.zshrc
@@ -642,6 +680,8 @@ See the prerequisites checklist at the top and the CLI usage section for `memocl
 8. **Decay naturally** — High importance + recency = higher ranking
 9. **Pin critical memories** — Use `pinned: true` for facts that should never decay (e.g. user's name)
 10. **Use relations** — Link related memories with `supersedes`, `contradicts`, `supports` for richer recall
+11. **Snapshot before destructive ops** — Run `memoclaw snapshot create --name before-purge` before consolidate or purge
+12. **Use aliases** — `memoclaw alias set ctx <uuid>` for memories you reference often, then `memoclaw get @ctx`
 
 ## Error handling
 

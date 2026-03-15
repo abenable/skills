@@ -22,7 +22,8 @@ curl -X POST "$API_BASE/mutation" \
   }'
 ```
 
-Persist returned API key immediately at `~/.c2c/credentials.json`.
+Persist returned API key immediately at `~/.c2c/credentials.json`, then run
+`chmod 600 ~/.c2c/credentials.json`.
 
 ## Upload Public Key
 

@@ -1,6 +1,23 @@
 ---
 name: tushare
 description: Fetch Chinese stock and futures market data via Tushare API. Supports stock quotes, futures data, company fundamentals, and macroeconomic indicators. Use when the user needs financial data from Chinese markets. Requires TUSHARE_TOKEN environment variable.
+metadata:
+  {
+    "openclaw": {
+      "requires": {
+        "env": ["TUSHARE_TOKEN"],
+        "bins": ["python3", "pip3"]
+      },
+      "install": [
+        {
+          "id": "pip-deps",
+          "kind": "python",
+          "package": "tushare pandas",
+          "label": "Install Python dependencies"
+        }
+      ]
+    }
+  }
 ---
 
 # Tushare 金融数据接口

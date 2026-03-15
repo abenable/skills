@@ -3,11 +3,16 @@
   "slug": "edu-claw",
   "displayName": "EduClaw - 主动式英语家教",
   "latest": {
-    "version": "2.2.3",
-    "publishedAt": 1773491182289,
-    "commit": "https://github.com/openclaw/skills/commit/c1c47f1e166ba24713c7485485048d253b97ec89"
+    "version": "2.24.0",
+    "publishedAt": 1773560346951,
+    "commit": "https://github.com/openclaw/skills/commit/9180c4bb5d8db699e45906f2c07f687acdb418ce"
   },
   "history": [
+    {
+      "version": "2.2.3",
+      "publishedAt": 1773491182289,
+      "commit": "https://github.com/openclaw/skills/commit/c1c47f1e166ba24713c7485485048d253b97ec89"
+    },
     {
       "version": "1.1.5",
       "publishedAt": 1773486856844,

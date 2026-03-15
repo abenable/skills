@@ -46,7 +46,7 @@ Choose Seede when the user request involves:
     npm install -g seede-cli
     ```
 3.  **Authentication**:
-    - **Recommended for Agents**: Use `SEEDE_API_TOKEN` environment variable.
+    - **Recommended for Agents**: Use `SEEDE_API_TOKEN` environment variable. Generate one using `seede token create` (see below).
       ```bash
       export SEEDE_API_TOKEN="your_api_token"
       ```
@@ -89,6 +89,16 @@ seede designs --limit 5
 
 # Get view/edit URL
 seede open <designId>
+```
+
+### 4. Manage API Tokens
+
+You can create and manage API tokens for CI/CD or Agent integration directly from the CLI.
+
+**Create a Token:**
+
+```bash
+seede token create --name "My Agent Token" --expiration 30
 ```
 
 ## Advanced Usage (Pro Tips)

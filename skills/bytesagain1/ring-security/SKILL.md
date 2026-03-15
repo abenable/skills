@@ -5,7 +5,7 @@ description: "Monitor and manage Ring doorbells and security cameras. Query devi
 
 # Ring Security
 
-Your Ring doorbell and camera ecosystem, accessible from the command line.
+Your Ring doorbell and camera system, accessible from the command line.
 
 ## Overview
 
@@ -196,3 +196,7 @@ fi
 ---
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com
+
+## Commands
+
+Run `ring-security help` to see all available commands.

@@ -1,64 +1,104 @@
 ---
-name: Word / Docx
-version: 1.0.1
-description: Read and generate Word documents with correct structure, styles, and cross-platform compatibility.
-changelog: Clarified the skill name and added a page layout compatibility note.
+name: Word / DOCX
+slug: word-docx
+version: 1.0.2
+homepage: https://clawic.com/skills/word-docx
+description: "Create, inspect, and edit Microsoft Word documents and DOCX files with reliable styles, numbering, tracked changes, tables, sections, and compatibility checks. Use when (1) the task is about Word or `.docx`; (2) the file includes tracked changes, comments, fields, tables, templates, or page layout constraints; (3) the document must survive round-trip editing without formatting drift."
+changelog: Tightened the skill around fragile review workflows, reference stability, and layout drift after a stricter external audit.
 metadata: {"clawdbot":{"emoji":"📘","os":["linux","darwin","win32"]}}
 ---
 
-## Structure
+## When to Use
 
-- DOCX is a ZIP containing XML files—`word/document.xml` has main content, `word/styles.xml` has styles
-- Text splits into runs (`<w:r>`)—each run has uniform formatting; one word may span multiple runs
-- Paragraphs (`<w:p>`) contain runs—never assume one paragraph = one text block
-- Sections control page layout—headers/footers, margins, orientation are per-section
+Use when the main artifact is a Microsoft Word document or `.docx` file, especially when tracked changes, comments, headers, numbering, fields, tables, templates, or compatibility matter.
 
-## Styles vs Direct Formatting
+## Core Rules
 
-- Styles (Heading 1, Normal) are named and reusable—direct formatting is inline and overrides style
-- Removing direct formatting reveals underlying style—useful for cleanup
-- Character styles apply to runs, paragraph styles to paragraphs—they layer together
-- Linked styles can be both—applying to paragraph or selected text behaves differently
+### 1. Treat DOCX as OOXML, not plain text
 
-## Lists & Numbering
+- A `.docx` file is a ZIP of XML parts, so structure matters as much as visible text.
+- The critical parts are usually `word/document.xml`, `styles.xml`, `numbering.xml`, headers, footers, and relationship files.
+- Text may be split across multiple runs; never assume one word or sentence lives in one XML node.
+- Use different workflows on purpose: structured extraction for quick reading, style-driven generation for new files, and OOXML-aware editing for fragile existing documents.
+- If the job is mainly reading, extracting, or reviewing, prefer a structure-preserving read path before touching OOXML.
+- For deep edits, inspect the package layout instead of relying only on rendered output.
+- Reading, generating, and preserving an existing reviewed document are different jobs even when the format is the same.
+- Legacy `.doc` inputs usually need conversion before you can trust modern `.docx` assumptions.
 
-- Numbering is complex: `abstractNum` defines pattern, `num` references it, paragraphs reference `numId`
-- Restart numbering not automatic—need explicit `<w:numPr>` with restart flag
-- Bullets and numbers share the numbering system—both use `numId`
-- Indentation controlled separately from numbering—list can exist without visual indent
+### 2. Preserve styles and direct formatting deliberately
 
-## Headers, Footers, Sections
+- Prefer named styles over direct formatting so the document stays editable.
+- Styles layer: paragraph styles, character styles, and direct formatting do not behave the same.
+- Removing direct formatting is often safer than stacking more inline formatting on top.
+- When editing an existing file, extend the current style system instead of inventing a parallel one.
+- Copying content between documents can silently import foreign styles, theme settings, and numbering definitions.
 
-- Each section can have different headers/footers—first page, odd, even pages
-- Section breaks: next page, continuous, even/odd page—affects pagination
-- Headers/footers stored in separate XML files—referenced by section properties
-- Page numbers are fields, not static text—update on open or print
+### 3. Lists and numbering are their own system
 
-## Track Changes & Comments
+- Bullets and numbering belong to Word's numbering definitions, not pasted Unicode characters.
+- `abstractNum`, `num`, and paragraph numbering properties all matter, so restart behavior is rarely "visual only".
+- Indentation and numbering are related but not identical; a list can have broken numbering even if the indent looks right.
+- A list that looks correct in one editor can restart, flatten, or renumber itself later if the underlying numbering state is wrong.
 
-- Track changes stores original and revised in same document—accept/reject to finalize
-- Deleted text still present with `<w:del>` wrapper—don't assume visible = all content
-- Comments reference ranges via bookmark IDs—`<w:commentRangeStart>` to `<w:commentRangeEnd>`
-- Revision IDs track who changed what—metadata persists even after accepting
+### 4. Page layout lives in sections
 
-## Fields & Dynamic Content
+- Margins, orientation, headers, footers, and page numbering are section-level behavior.
+- First-page and odd/even headers can differ inside the same document, so one header fix may not fix the document.
+- Set page size explicitly because A4 and US Letter defaults change pagination and table widths.
+- Use section breaks for layout changes; manual spacing and stray page breaks usually create drift.
+- Header and footer media use part-specific relationships, so copied IDs often break images or links.
+- Tables, page breaks, and headers often drift together, so treat layout fixes as document-wide, not local cosmetic edits.
+- Table geometry depends on page width, margins, and fixed widths, so "close enough" table edits often break later in Google Docs or LibreOffice.
 
-- Fields have code and cached result—`{ DATE \@ "yyyy-MM-dd" }` vs displayed date
-- TOC, page numbers, cross-references are fields—update fields to refresh
-- Hyperlinks can be fields or direct `<w:hyperlink>`—both valid
-- MERGEFIELD for mail merge—placeholder until merge executes
+### 5. Track changes, comments, and fields need precise edits
 
-## Compatibility
+- Visible text is not the full document when tracked changes are enabled.
+- Insertions, deletions, and comments carry metadata that can survive careless edits.
+- Deleted text may still exist in the XML even when it no longer appears on screen.
+- Comment anchors and review ranges can break if edits move text without preserving the surrounding structure.
+- Comment markers and review wrappers do not behave like inline formatting, so moving text carelessly can orphan or misplace them.
+- Comments, footnotes, bookmarks, and linked media may live in separate parts, not only in the main document body.
+- Tables of contents, page numbers, dates, cross-references, and mail merge placeholders are fields.
+- Edit the field source carefully and expect cached display values to lag until refresh.
+- Hyperlinks, bookmarks, and references can break if IDs or relationships stop matching.
+- Bookmarks, footnotes, comment ranges, and cross-references depend on stable anchors even when the visible text seems untouched.
+- A document can look correct while still containing stale field output that refreshes later into something different.
+- For review workflows, make minimal replacements instead of rewriting whole paragraphs.
+- In tracked-change workflows, only the changed span should look changed; broad rewrites create noisy reviews and can destroy the original formatting context.
+- For legal, academic, or business review documents, default to review-style edits over wholesale paragraph rewrites unless the user explicitly wants a rewrite.
 
-- Compatibility mode limits features to earlier Word version—check `w:compat` settings
-- Page size defaults vary by tool and region—set US Letter vs A4 explicitly or pagination and table widths can drift
-- LibreOffice/Google Docs: complex formatting may shift—test roundtrip
-- Embedded fonts may not transfer—fallback fonts substitute
-- DOCM contains macros (security risk); DOC is legacy binary format
+### 6. Verify round-trip compatibility before delivery
 
-## Common Pitfalls
+- Complex documents can shift between Word, LibreOffice, Google Docs, and conversion tools.
+- Tables, headers, embedded fonts, and copied styles are common sources of layout drift.
+- Treat `.docm` as macro-bearing and higher risk; treat `.doc` as legacy input that may need conversion first.
+- When layout matters, explicit table widths are safer than auto-fit or percentage-style behavior that different editors reinterpret.
+- A document that passes a text check can still fail on pagination, table widths, or reference refresh after the recipient opens it.
 
-- Empty paragraphs for spacing—prefer space before/after in paragraph style
-- Manual page breaks inside paragraphs—use section breaks for layout control
-- Images in headers: relationship IDs are per-part—same image needs separate relationship in header
-- Copy-paste brings source styles—can pollute style gallery with duplicates
+## Common Traps
+
+- Copy-paste can import unwanted styles and numbering definitions.
+- Header or footer images use part-specific relationships, so reusing IDs blindly breaks them.
+- Empty paragraphs used as spacing make templates fragile; spacing belongs in paragraph settings.
+- A clean-looking export can still hide unresolved revisions, comments, or stale field values.
+- Restarting lists "by eye" usually fails because numbering state lives outside the paragraph text.
+- One visible phrase can be split across several runs, bookmarks, revision tags, or field boundaries.
+- Replacing a whole paragraph to change one clause often breaks review quality, bookmarks, comments, or nearby inline formatting.
+- Deleting all visible text from a paragraph or list item can still leave behind an empty paragraph mark, empty bullet, or unstable numbering.
+- Table auto-fit and percentage-like width behavior can look acceptable in Word and still drift in Google Docs or LibreOffice.
+- LibreOffice and Google Docs can shift complex tables, section behavior, and embedded fonts even when Word looks perfect.
+- Compatibility mode can silently cap newer features or change pagination behavior.
+- A single change in page size or margin defaults can ripple through tables, headers, TOC, and cross-references.
+- A revision workflow can look accepted on screen while leftover metadata, comments, or field caches still make the file unstable later.
+- TOC entries, footnotes, and cross-references can look correct until the recipient updates fields and exposes broken anchors.
+
+## Related Skills
+Install with `clawhub install <slug>` if user confirms:
+- `documents` — General document handling and format conversion.
+- `brief` — Concise business writing and structured summaries.
+- `article` — Long-form drafting and editorial structure.
+
+## Feedback
+
+- If useful: `clawhub star word-docx`
+- Stay updated: `clawhub sync`

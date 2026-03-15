@@ -3,11 +3,16 @@
   "slug": "x402-layer",
   "displayName": "x402 Singularity Layer",
   "latest": {
-    "version": "1.3.3",
-    "publishedAt": 1772801687044,
-    "commit": "https://github.com/openclaw/skills/commit/bac7662a736d1cc6f4ba7322f37ddb819acfff81"
+    "version": "1.4.0",
+    "publishedAt": 1773328385635,
+    "commit": "https://github.com/openclaw/skills/commit/fbe4fd00d16a3b29d90320760e3cac7b62ac39ed"
   },
   "history": [
+    {
+      "version": "1.3.3",
+      "publishedAt": 1772801687044,
+      "commit": "https://github.com/openclaw/skills/commit/bac7662a736d1cc6f4ba7322f37ddb819acfff81"
+    },
     {
       "version": "1.2.1",
       "publishedAt": 1772198367315,

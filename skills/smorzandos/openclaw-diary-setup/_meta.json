@@ -1,0 +1,11 @@
+{
+  "owner": "smorzandos",
+  "slug": "openclaw-diary-setup",
+  "displayName": "OpenClaw Diary Setup",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1773547126190,
+    "commit": "https://github.com/openclaw/skills/commit/081424a78d3e8145927cd24fd7fdca76c996b555"
+  },
+  "history": []
+}

@@ -1,6 +1,6 @@
-{
+﻿{
   "name": "autoclaw-mcp",
-  "version": "1.0.0",
+  "version": "6.1.0",
   "description": "AutoClaw MCP Server",
   "main": "dist/server.js",
   "scripts": {

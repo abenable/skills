@@ -77,6 +77,12 @@ minara perps order
 # View positions
 minara perps positions
 
+# Close positions
+minara perps close                    # Interactive: select position to close
+minara perps close --all              # Close all positions (non-interactive)
+minara perps close --symbol BTC       # Close BTC position (non-interactive)
+minara perps close --all --yes        # Close all, skip confirmation
+
 # Cancel orders
 minara perps cancel
 

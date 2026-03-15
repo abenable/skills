@@ -1,6 +1,12 @@
 ---
 name: X-Publisher
 description: Publish tweets to X (Twitter) using the official Tweepy library. Supports text-only tweets, tweets with images or videos, and returns detailed publish results including tweet ID and URL. Requires X API credentials (API Key, API Secret, Access Token, Access Token Secret).
+env:
+  - X_API_KEY
+  - X_API_SECRET
+  - X_ACCESS_TOKEN
+  - X_ACCESS_TOKEN_SECRET
+  - X_BEARER_TOKEN
 ---
 
 # X (Twitter) 推文发布工具

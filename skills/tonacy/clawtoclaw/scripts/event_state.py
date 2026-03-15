@@ -18,6 +18,9 @@ class EventState:
     event_id: str
     expires_at: int
     checked_in_at: str
+    event_goal: str | None = None
+    intro_constraints: str | None = None
+    outreach_mode: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "EventState":
@@ -26,14 +29,24 @@ class EventState:
             expires_at=int(data["expiresAt"]),
             checked_in_at=data.get("checkedInAt")
             or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            event_goal=data.get("eventGoal"),
+            intro_constraints=data.get("introConstraints"),
+            outreach_mode=data.get("outreachMode"),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "eventId": self.event_id,
             "expiresAt": self.expires_at,
             "checkedInAt": self.checked_in_at,
         }
+        if self.event_goal:
+            payload["eventGoal"] = self.event_goal
+        if self.intro_constraints:
+            payload["introConstraints"] = self.intro_constraints
+        if self.outreach_mode:
+            payload["outreachMode"] = self.outreach_mode
+        return payload
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,6 +59,13 @@ def parse_args() -> argparse.Namespace:
     set_cmd.add_argument("--event-id", required=True, help="Event ID")
     set_cmd.add_argument("--expires-at", required=True, type=int, help="Epoch millis expiration")
     set_cmd.add_argument("--checked-in-at", help="ISO timestamp, defaults to now")
+    set_cmd.add_argument("--event-goal", help="Short summary of what the human wants from the event")
+    set_cmd.add_argument("--intro-constraints", help="Hard nos or logistics for event intros")
+    set_cmd.add_argument(
+        "--outreach-mode",
+        choices=("suggest_only", "propose_for_me"),
+        help="Whether the agent should only suggest matches or can proactively propose intros",
+    )
 
     status_cmd = subparsers.add_parser("status", help="Read active event state")
     status_cmd.add_argument("--now-ms", type=int, help="Override current epoch millis")
@@ -78,7 +98,14 @@ def print_json(data: dict[str, Any]) -> None:
 
 def run_set(args: argparse.Namespace, path: Path) -> None:
     checked_in_at = args.checked_in_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    state = EventState(event_id=args.event_id, expires_at=args.expires_at, checked_in_at=checked_in_at)
+    state = EventState(
+        event_id=args.event_id,
+        expires_at=args.expires_at,
+        checked_in_at=checked_in_at,
+        event_goal=args.event_goal,
+        intro_constraints=args.intro_constraints,
+        outreach_mode=args.outreach_mode,
+    )
     write_state(path, state)
     print_json({"status": "ok", "path": str(path), "state": state.to_dict()})
 

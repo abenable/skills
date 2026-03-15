@@ -3,9 +3,15 @@
   "slug": "douyin-creator",
   "displayName": "Douyin Creator",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1773421228203,
-    "commit": "https://github.com/openclaw/skills/commit/9668ef06c37d3e364aa3a078a21ba5fa4100b4f0"
+    "version": "2.3.1",
+    "publishedAt": 1773536601379,
+    "commit": "https://github.com/openclaw/skills/commit/6082524af878ca3ac192132ec111b4fbbda5018e"
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1773421228203,
+      "commit": "https://github.com/openclaw/skills/commit/9668ef06c37d3e364aa3a078a21ba5fa4100b4f0"
+    }
+  ]
 }

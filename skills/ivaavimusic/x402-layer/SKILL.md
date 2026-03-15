@@ -1,9 +1,9 @@
 ---
 name: x402-layer
-version: 1.3.3
+version: 1.4.0
 description: |
   x402-layer helps agents pay for APIs with USDC, deploy monetized endpoints,
-  manage credits/webhooks/marketplace listings, and handle ERC-8004 registration/reputation on Base/Solana.
+  manage credits/webhooks/marketplace listings, and handle wallet-first ERC-8004 registration/discovery/management/reputation on Base, Ethereum, Polygon, BSC, Monad, and Solana.
   Use this skill when the user asks to "create x402 endpoint",
   "deploy monetized API", "pay for API with USDC", "check x402 credits",
   "consume API credits", "list endpoint on marketplace", "buy API credits",
@@ -13,7 +13,7 @@ description: |
   "register ERC-8004 agent", "register Solana 8004 agent",
   "submit on-chain reputation feedback", "rate ERC-8004 agent",
   use "Coinbase Agentic Wallet (AWAL)", or manage x402 Singularity Layer
-  operations on Base or Solana networks.
+  operations on Base, Ethereum, Polygon, BSC, Monad, or Solana networks.
 homepage: https://studio.x402layer.cc/docs/agentic-access/openclaw-skill
 metadata:
   clawdbot:
@@ -49,7 +49,7 @@ This skill covers the full Singularity Layer lifecycle:
 - receive and verify webhook payment events
 - register agents and submit on-chain reputation feedback
 
-Networks: Base (EVM), Solana  
+Networks: Base, Ethereum, Polygon, BSC, Monad, Solana  
 Currency: USDC  
 Protocol: HTTP 402 Payment Required
 
@@ -65,7 +65,7 @@ Use this routing first, then load the relevant reference doc.
 | Discover/search marketplace | `discover_marketplace.py` | `references/marketplace.md` |
 | Create/edit/list endpoint | `create_endpoint.py`, `manage_endpoint.py`, `list_on_marketplace.py`, `topup_endpoint.py` | `references/agentic-endpoints.md`, `references/marketplace.md` |
 | Configure/verify webhooks | `manage_webhook.py`, `verify_webhook_payment.py` | `references/webhooks-verification.md` |
-| Register/rate agents (ERC-8004/Solana-8004) | `register_agent.py`, `submit_feedback.py` | `references/agent-registry-reputation.md` |
+| Register/discover/manage/rate agents (ERC-8004/Solana-8004) | `register_agent.py`, `list_agents.py`, `list_my_endpoints.py`, `update_agent.py`, `submit_feedback.py` | `references/agent-registry-reputation.md` |
 
 ---
 
@@ -83,7 +83,7 @@ Option A: private keys
 export PRIVATE_KEY="0x..."
 export WALLET_ADDRESS="0x..."
 # Solana optional
-export SOLANA_SECRET_KEY="[1,2,3,...]"
+export SOLANA_SECRET_KEY="base58-or-[1,2,3,...]"
 ```
 
 Option B: Coinbase AWAL
@@ -92,6 +92,8 @@ Option B: Coinbase AWAL
 npx skills add coinbase/agentic-wallet-skills
 export X402_USE_AWAL=1
 ```
+
+Use private-key mode for ERC-8004 wallet-first registration. AWAL remains useful for x402 payment flows.
 
 Security note: scripts read only explicit process environment variables. `.env` files are not auto-loaded.
 
@@ -124,7 +126,10 @@ Security note: scripts read only explicit process environment variables. `.env` 
 ### Agent Registry + Reputation
 | Script | Purpose |
 |---|---|
-| `register_agent.py` | Register ERC-8004/Solana-8004 agent |
+| `register_agent.py` | Register ERC-8004/Solana-8004 agent with image/version/tags and endpoint binding support |
+| `list_agents.py` | List ERC-8004 agents owned by the configured wallet or linked dashboard user |
+| `list_my_endpoints.py` | List platform endpoints that can be linked to ERC-8004 agents |
+| `update_agent.py` | Update existing ERC-8004/Solana-8004 agent metadata, visibility, and endpoint bindings |
 | `submit_feedback.py` | Submit on-chain reputation feedback |
 
 ---
@@ -198,11 +203,35 @@ python {baseDir}/scripts/verify_webhook_payment.py \
 
 ### F) Agent Registration + Reputation
 ```bash
+python {baseDir}/scripts/list_my_endpoints.py
+
 python {baseDir}/scripts/register_agent.py \
   "My Agent" \
   "Autonomous service agent" \
-  "https://api.example.com/agent" \
-  --network baseSepolia
+  --network baseSepolia \
+  --image https://example.com/agent.png \
+  --version 1.4.0 \
+  --tag finance \
+  --tag automation \
+  --endpoint-id <ENDPOINT_UUID> \
+  --custom-endpoint https://api.example.com/agent
+
+python {baseDir}/scripts/list_agents.py --network baseSepolia
+
+python {baseDir}/scripts/update_agent.py \
+  --network baseSepolia \
+  --agent-id 123 \
+  --version 1.4.1 \
+  --tag finance \
+  --tag automation \
+  --endpoint-id <ENDPOINT_UUID> \
+  --public
+
+# The same EVM flow also supports:
+#   --network ethereum
+#   --network polygon
+#   --network bsc
+#   --network monad
 
 python {baseDir}/scripts/submit_feedback.py \
   --network base \
@@ -228,7 +257,7 @@ Load only what is needed for the user task:
 - `references/webhooks-verification.md`:
   webhook events, signature verification, and receipt cross-checks.
 - `references/agent-registry-reputation.md`:
-  ERC-8004/Solana-8004 registration and feedback rules.
+  ERC-8004/Solana-8004 registration, discovery, management, and feedback rules.
 - `references/payment-signing.md`:
   exact signing domains/types/header payload details.
 
@@ -240,7 +269,7 @@ Load only what is needed for the user task:
 |---|---|---|
 | `PRIVATE_KEY` | Base private-key mode | EVM signing key |
 | `WALLET_ADDRESS` | Most operations | Primary wallet |
-| `SOLANA_SECRET_KEY` | Solana private-key mode | JSON array bytes |
+| `SOLANA_SECRET_KEY` | Solana private-key mode | base58 secret or JSON array bytes |
 | `SOLANA_WALLET_ADDRESS` | Solana override | optional |
 | `WALLET_ADDRESS_SECONDARY` | dual-chain endpoint mode | optional |
 | `X402_USE_AWAL` | AWAL mode | set `1` |
@@ -248,7 +277,6 @@ Load only what is needed for the user task:
 | `X402_PREFER_NETWORK` | network selection | `base`, `solana` |
 | `X402_API_BASE` | API override | default `https://api.x402layer.cc` |
 | `X_API_KEY` / `API_KEY` | provider endpoint/webhook management | endpoint key |
-| `WORKER_REGISTRATION_API_KEY` | agent registration | worker auth key |
 | `WORKER_FEEDBACK_API_KEY` | reputation feedback | worker auth key |
 
 ---

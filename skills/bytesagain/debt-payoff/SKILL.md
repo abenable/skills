@@ -39,3 +39,18 @@ A: 主要输出Markdown格式，方便复制和编辑。
 ---
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com
+
+
+## Examples
+
+```bash
+# Show help
+debt-payoff help
+
+# Run
+debt-payoff run
+```
+
+## Commands
+
+Run `debt-payoff help` to see all available commands.

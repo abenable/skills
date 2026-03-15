@@ -1,7 +1,7 @@
 ---
 name: clawver-print-on-demand
 description: Sell print-on-demand merchandise on Clawver. Browse Printful catalog, create product variants, track fulfillment and shipping. Use when selling physical products like posters, t-shirts, mugs, or apparel.
-version: 1.3.0
+version: 1.3.1
 homepage: https://clawver.store
 metadata: {"openclaw":{"emoji":"👕","homepage":"https://clawver.store","requires":{"env":["CLAW_API_KEY"]},"primaryEnv":"CLAW_API_KEY"}}
 ---
@@ -18,9 +18,9 @@ Use Product Artisan when you want the platform to handle:
 - brief clarification
 - product and blank selection
 - plan approval before credits are spent
-- draft creation
-- design generation
-- mockup review
+- automatic draft creation after plan approval
+- automatic design generation and mockup generation after plan approval
+- publish-ready proposal assembly
 - final publish confirmation
 
 Core Artisan endpoints:
@@ -36,12 +36,12 @@ curl -X POST https://api.clawver.store/v1/artisan/sessions \
 ```
 
 ```bash
-# Continue the same session after each checkpoint
+# Approve the plan and let the automatic pipeline run
 curl -X PATCH https://api.clawver.store/v1/artisan/sessions/{sessionId} \
   -H "Authorization: Bearer $CLAW_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "Approve the plan and create the draft product and design proposal."
+    "message": "Approve the plan and continue."
   }'
 ```
 
@@ -54,16 +54,78 @@ curl -N \
 ```
 
 Structured fields to inspect:
-- `awaitingDecision`: current checkpoint (`plan_approval`, `design_review`, `mockup_approval`, `publish_confirmation`)
+- `awaitingDecision`: current checkpoint (`plan_approval`, `publish_confirmation`)
 - `agentGuidance`: structured next-step hints
 - `proposedPlan`: machine-readable plan before approval
 - `approvedPlan`: plan after approval
+- `activeStep`: current server-side operation label while processing
+- `mostRecentToolEvent`: latest summarized tool result for progress UIs
+
+### SSE Event Reference
+
+The `/events` endpoint emits the following Server-Sent Event types:
+
+| Event | When | Payload |
+|---|---|---|
+| `session.snapshot` | First event after connection | Full `ArtisanSessionResponse` |
+| `session.state` | Session state changed (new status, progress update, etc.) | Full `ArtisanSessionResponse` |
+| `session.complete` | Processing finished; session is waiting for input or terminal | `{ sessionId, status, awaitingDecision }` |
+| `session.error` | Error or stream timeout | `{ code, message }` |
+
+**Important SSE notes:**
+- The stream has a max duration of ~20 minutes. If you receive a `STREAM_TIMEOUT` error, reconnect or switch to polling.
+- Keep-alive comments (`: keep-alive`) are sent every 15 seconds. If you stop receiving them, the connection may have dropped.
+- After receiving `session.complete`, close your connection and inspect `awaitingDecision` to decide your next action.
+
+### Understanding Progress Fields
+
+When `status` is `"processing"`, inspect these response fields:
+
+| Field | Example | Meaning |
+|---|---|---|
+| `currentOperation` | `"design_generation"` | High-level operation category |
+| `progressStage` | `"generating_design"` | Granular stage: `starting`, `thinking`, `catalog_lookup`, `creating_product`, `generating_design`, `polling_design`, `generating_mockup` |
+| `progressSubstep` | `"waiting_for_image_provider"` | Human-readable sub-step within the stage |
+| `progressHint` | `"Generating design…"` | Display-friendly message |
+| `estimatedWaitMs` | `45000` | Estimated time for the current stage (design/mockup generation ~45s, catalog lookup ~12s, thinking ~8s) |
+| `estimatedCompletionAt` | `"2025-..."` | ISO timestamp of estimated completion |
+| `retryAfterMs` | `5000` | Suggested poll interval when not using SSE |
+
+### `awaitingDecision` Values
+
+| Value | What to do |
+|---|---|
+| `plan_approval` | Review `proposedPlan` and send approval or revision |
+| `publish_confirmation` | Confirm publish to make the product live |
+
+When `status` is `"processing"`, check `pendingAwaitingDecision` — it shows what decision will be required once processing completes.
+
+### Simple Artisan Flow
+
+1. Start the session with a concrete product brief.
+2. Wait for `awaitingDecision = "plan_approval"` and inspect `proposedPlan`.
+3. Approve the plan with a `PATCH /v1/artisan/sessions/{sessionId}` message. This automatically kicks off draft creation, design generation, mockup generation, and publish-ready proposal assembly.
+4. Wait for `awaitingDecision = "publish_confirmation"`, review `proposal.products[].designs` for the mockup-backed draft, then publish only if the caller wants it live.
+
+### Session Lifecycle
+
+- `sessionExpiresAt` in every response shows when the session will expire (1 hour from last activity).
+- `sessionTtlMs` shows the TTL in milliseconds.
+- Expired sessions cannot be resumed; start a new session.
+
+### Simplified Publish Response
+
+After publish, the response includes convenience fields:
+- `productId`: the published product ID
+- `productUrl`: direct link to the product (currently `null`; use `proposal.products[0].productId` to construct the URL)
+- `mockupUrls`: `{ "front": "https://...", "back": "https://..." }` extracted from `proposal.products[].designs`
 
 Operational advice for agent clients:
-- Prefer SSE during active turns
-- Fall back to `GET /v1/artisan/sessions/{sessionId}` polling if needed
-- Poll every 10-15 seconds for image-heavy turns instead of every 1-2 seconds
-- Treat plan approval, mockup approval, and publish confirmation as separate permissions
+- Prefer SSE during active turns; fall back to polling if SSE drops
+- Use `retryAfterMs` from the response as your poll interval (typically 5s)
+- In the standard happy path, there are only two explicit caller approvals: plan approval and publish confirmation
+- Plan approval is not just advisory; it starts the automatic production pipeline for the approved blank and variants
+- Check `estimatedWaitMs` for realistic wait time estimates per stage
 
 Use the raw POD APIs below when you need manual control over catalog selection, design uploads, or custom fulfillment flows.
 

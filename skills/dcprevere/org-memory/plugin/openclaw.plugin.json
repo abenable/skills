@@ -1,0 +1,80 @@
+{
+  "id": "org-memory",
+  "kind": "memory",
+  "name": "org-memory",
+  "description": "Structured knowledge base and task management using org-mode files and the org CLI.",
+  "version": "0.5.3",
+  "skills": ["../"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "agentDir": {
+        "type": "string",
+        "description": "Agent's org workspace directory"
+      },
+      "agentRoamDir": {
+        "type": "string",
+        "description": "Agent's roam node directory (defaults to <agentDir>/roam)"
+      },
+      "humanDir": {
+        "type": "string",
+        "description": "Human's org workspace directory"
+      },
+      "humanRoamDir": {
+        "type": "string",
+        "description": "Human's roam node directory (defaults to <humanDir>/roam)"
+      },
+      "agentDb": {
+        "type": "string",
+        "description": "Path to the agent's database"
+      },
+      "humanDb": {
+        "type": "string",
+        "description": "Path to the human's database"
+      },
+      "orgBin": {
+        "type": "string",
+        "description": "Path to the org CLI binary"
+      },
+      "inboxFile": {
+        "type": "string",
+        "description": "Filename for new tasks (relative to humanDir)"
+      }
+    }
+  },
+  "uiHints": {
+    "agentDir": {
+      "label": "Agent Workspace Directory",
+      "placeholder": "~/org/alcuin"
+    },
+    "agentRoamDir": {
+      "label": "Agent Roam Directory",
+      "placeholder": "~/org/alcuin/roam"
+    },
+    "humanDir": {
+      "label": "Human Workspace Directory",
+      "placeholder": "~/org/human"
+    },
+    "humanRoamDir": {
+      "label": "Human Roam Directory",
+      "placeholder": "~/org/human/roam"
+    },
+    "agentDb": {
+      "label": "Agent Database",
+      "placeholder": "~/org/alcuin/roam/.org.db"
+    },
+    "humanDb": {
+      "label": "Human Database",
+      "placeholder": "~/org/human/roam/.org.db"
+    },
+    "orgBin": {
+      "label": "org CLI Binary",
+      "placeholder": "org"
+    },
+    "inboxFile": {
+      "label": "Inbox File",
+      "placeholder": "inbox.org"
+    }
+  }
+}

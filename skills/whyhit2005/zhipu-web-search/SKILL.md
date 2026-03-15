@@ -46,10 +46,10 @@ A wrapper shell script is provided for convenience.
 
 ```bash
 # Basic Search (defaults to search_pro_quark and 20 results)
-./scripts/zhipu_search.sh --query "AI development trends"
+bash scripts/zhipu_search.sh --query "AI development trends"
 
 # Advanced Search
-./scripts/zhipu_search.sh \
+bash scripts/zhipu_search.sh \
   --query "latest open source LLMs" \
   --engine "search_pro_sogou" \
   --count 50 \

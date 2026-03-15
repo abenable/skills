@@ -124,7 +124,6 @@ bash scripts/liquidity-monitor.sh dashboard \
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com
 
-
 ## Commands
 
 - `pools` — Pools

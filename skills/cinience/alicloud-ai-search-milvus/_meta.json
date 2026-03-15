@@ -3,11 +3,16 @@
   "slug": "alicloud-ai-search-milvus",
   "displayName": "Alicloud Ai Search Milvus",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770973180403,
-    "commit": "https://github.com/openclaw/skills/commit/acbafc66993bff5bc956abc61e932988b8d59ee8"
+    "version": "1.0.3",
+    "publishedAt": 1773221880019,
+    "commit": "https://github.com/openclaw/skills/commit/340cc2ac39feca80dbc1288ba3721f0755a23cf1"
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770973180403,
+      "commit": "https://github.com/openclaw/skills/commit/acbafc66993bff5bc956abc61e932988b8d59ee8"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770768443396,

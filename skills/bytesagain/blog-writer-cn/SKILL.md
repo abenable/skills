@@ -1,6 +1,6 @@
 ---
 name: Blog Writer
-description: >-
+description: "✍️ 博客写作工具 — blog.sh. Use when you need blog writer cn capabilities. Triggers on: blog writer cn."
   博客写作助手。完整文章生成(Markdown输出)、多角度大纲、SEO优化诊断、开头段落、系列文章规划、风格改写、CTA文案。Blog writer with full articles, outlines, SEO analysis, hooks, series planning, rewriting, CTA copy. 博客、写作、SEO、内容营销。
 ---
 # Blog Writer
@@ -24,7 +24,6 @@ description: >-
 - **rewrite** — rewrite
 - **cta** — cta
 
-
 ## 专业建议
 
 - 数字型：「2024年最值得学的10个AI工具」
@@ -35,3 +34,20 @@ description: >-
 
 ---
 *Blog Writer by BytesAgain*
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
+
+## Examples
+
+```bash
+# Show help
+blog-writer-cn help
+
+# Run
+blog-writer-cn run
+```
+
+## Commands
+
+Run `blog-writer-cn help` to see all available commands.

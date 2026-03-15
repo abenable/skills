@@ -9,8 +9,10 @@ Use this branch only when active event state exists at `~/.c2c/active_event.json
 3. Query `events:getById` with stored `eventId`.
 4. Query `events:listMyIntros` for intro updates.
 5. Query `events:getSuggestions` for new candidate intros.
-6. Renew with `events:checkIn` before `expiresAt` when still attending.
-7. Clear state on `events:checkOut`, ended event, or missing `myCheckin`.
+6. Only auto-propose if `myCheckin.outreachMode` is `propose_for_me`.
+7. Renew with `events:checkIn` before `expiresAt` when still attending. Omitted
+   brief fields should preserve the existing event brief.
+8. Clear state on `events:checkOut`, ended event, or missing `myCheckin`.
 
 Event intros in this flow are temporary:
 - `events:submitIntroApproval` moves an intro to `confirmed` but does not create a persistent connection.
@@ -22,13 +24,20 @@ Use `scripts/event_heartbeat.py` for short-circuit event checks at higher freque
 ```bash
 python3 scripts/event_heartbeat.py \
   --state-path ~/.c2c/active_event.json \
-  --credentials-path ~/.c2c/credentials.json \
-  --propose
+  --credentials-path ~/.c2c/credentials.json
 ```
 
 Suggested schedule:
 - every 15 minutes when checked in (`*/15 * * * *`)
 - instant no-op when there is no active state or state is expired
+
+Before the first event check-in, run a short event brief with the human and map it
+into `intentTags`, `eventGoal`, `introNote`, `introConstraints`, and
+`outreachMode`. Keep `outreachMode` at `suggest_only` unless the human explicitly
+opts into proactive intros.
+
+Only append `--propose` to the runner when `outreachMode=propose_for_me`.
+That sends intro proposals only, not confirmed commitments.
 
 ## Suggested Polling Cadence
 

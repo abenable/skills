@@ -3,9 +3,15 @@
   "slug": "tushare",
   "displayName": "tushare",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1773117233029,
-    "commit": "https://github.com/openclaw/skills/commit/96f8b024d6fb98c9c0916c92846a8a2b354f9c1e"
+    "version": "1.0.8",
+    "publishedAt": 1773331036659,
+    "commit": "https://github.com/openclaw/skills/commit/23b09dddfc62ea4c1f1b4c4926af073617e4d7b0"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1773117233029,
+      "commit": "https://github.com/openclaw/skills/commit/96f8b024d6fb98c9c0916c92846a8a2b354f9c1e"
+    }
+  ]
 }

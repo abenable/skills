@@ -1,0 +1,11 @@
+{
+  "owner": "ckchzh",
+  "slug": "sshkey",
+  "displayName": "Sshkey",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773539646626,
+    "commit": "https://github.com/openclaw/skills/commit/441580855b01651fc3a5baf6691cc89ef40a2660"
+  },
+  "history": []
+}

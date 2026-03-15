@@ -3,9 +3,15 @@
   "slug": "x-publisher",
   "displayName": "X tweet publisher",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1773118015973,
-    "commit": "https://github.com/openclaw/skills/commit/0071af294bdcf0d6b5cf99efe045272578e3bd78"
+    "version": "1.0.6",
+    "publishedAt": 1773324514880,
+    "commit": "https://github.com/openclaw/skills/commit/9c1735b2fd87c881add1b9bcf127782fbd0c13dd"
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1773118015973,
+      "commit": "https://github.com/openclaw/skills/commit/0071af294bdcf0d6b5cf99efe045272578e3bd78"
+    }
+  ]
 }

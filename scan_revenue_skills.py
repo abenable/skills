@@ -318,8 +318,6 @@ def scan_skills(skills_root):
                 continue
 
             info = read_skill(skill_dir)
-            if info is None:
-                continue
 
             # Polymarket exclusion
             if is_polymarket(info["name"], info["description"], info["path"]):
